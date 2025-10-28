@@ -20,34 +20,48 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-  module ALU #(parameter N = 32)(input [N-1:0] A, [N-1:0] B, input [3:0] sel, output reg [N-1:0] out, output ZFlag );
-wire [N-1:0] Result;
-wire [N-1:0] MuxBOut;
-wire [N-1:0] OrOut ;
-wire [N-1:0] AndOut;
-wire [N-1:0] MuxInputs [15:0];
-wire MuxCarry;
-assign MuxInputs[0] = AndOut; 
-assign MuxInputs[1] = OrOut;
-assign MuxInputs[2] = Result;
-assign MuxInputs[6] = Result;
-assign ZFlag = (out == 0)? (1'b1): (1'b0);
-assign OrOut = A | B;
-assign AndOut = A & B;
-wire [N-1:0] NotB;
-assign NotB = ~B;
-Mux #(N) instB(NotB, B, sel[2], MuxBOut);
-Mux #(1) instC(1'b1, 1'b0, sel[2], MuxCarry);
-wire Cout;
-RCA #(N)  instA( A, MuxBOut, MuxCarry, Result, Cout);
-always @(*) begin
-case(sel) 
-        4'd0:  out = MuxInputs[0];
-        4'd1:  out = MuxInputs[1];
-        4'd2:  out = MuxInputs[2];
-        4'd6:  out = MuxInputs[6];
+ 
+module ALU(
+	input   wire [31:0] a, b,
+	input   wire [4:0]  shamt,
+	output  reg  [31:0] r,
+	output  wire        cf, zf, vf, sf,
+	input   wire [3:0]  alufn
+);
 
-        default: out = 0;
-endcase
-end
+    wire [31:0] add, sub, op_b;
+    wire cfa, cfs;
+    
+    assign op_b = (~b);
+    
+    assign {cf, add} = alufn[0] ? (a + op_b + 1'b1) : (a + b);
+    
+    assign zf = (add == 0);
+    assign sf = add[31];
+    assign vf = (a[31] ^ (op_b[31]) ^ add[31] ^ cf);
+    
+    wire[31:0] sh;
+    Shifter shifter0(a, shamt, alufn[1:0],sh);
+    
+    always @ * begin
+        r = 0;
+        (* parallel_case *)
+        case (alufn)
+            // arithmetic
+            4'b00_00 : r = add;
+            4'b00_01 : r = add;
+            4'b00_11 : r = b;
+            // logic
+            4'b01_00:  r = a | b;
+            4'b01_01:  r = a & b;
+            4'b01_11:  r = a ^ b;
+            // shift
+            4'b10_00:  r=sh;
+            4'b10_01:  r=sh;
+            4'b10_10:  r=sh;
+            // slt & sltu
+            4'b11_01:  r = {31'b0,(sf != vf)}; 
+            4'b11_11:  r = {31'b0,(~cf)};            	
+        endcase
+    end
 endmodule

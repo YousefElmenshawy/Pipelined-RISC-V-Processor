@@ -20,6 +20,12 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module Shifter(input [31:0] A, input [4:0] shamt, input [1:0] type, output [31:0] result);
-
+module Shifter(input  [31:0] A, input [4:0] shamt, input [1:0] type, output reg [31:0] result);
+always @(*) begin
+case (type)
+2'b00:result = A << shamt; // sll (logical shift left)
+2'b01:result = A>>shamt; //srl (logical shift right)
+2'b10: result = $signed(A)>>>shamt; // arthmetic shift right (sra)
+endcase
+end
 endmodule
