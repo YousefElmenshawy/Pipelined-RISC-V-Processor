@@ -26,14 +26,21 @@ case(ALUOp)
 2'b00: ALUsel = 4'b0010;
 2'b01: ALUsel= 4'b0110;
 2'b10: begin
-if (func3 == 3'b111 & func7 == 0)
+if (func3 == 3'b111 && func7 == 0)
 ALUsel = 4'b0000;
-else if (func3 == 3'b110 & func7 == 0)
+else if (func3 == 3'b110 && func7 == 0)
 ALUsel = 4'b0001;
 else if (func3==3'b000)
  ALUsel = func7 ? 4'b0110:4'b0010;
+ else if (func3 ==3'b001&& func7==0)
+ ALUsel = 4'b1000; //SLL-SLLI
+ else if (func3 == 3'b101)
+ ALUsel = func7 ? 4'b1010: 4'b1001; //SRL-SRLI/SRA-SRAI
+ else if (func3 == 3'b010&& func7==0)
+ ALUsel = 4'b1101;//slt
+ else if(func3 == 3'b011 && func7==0)
+ ALUsel =4'b1111; //sltu
 end
-default: ALUsel = 4'b1111;
 endcase
 end
    

@@ -50,13 +50,16 @@ wire [31:0] DataMemOut;
 wire [31:0] BranchAdderOut;
 wire [31:0] NormalAdderOut;
 wire PCsel;
+wire [4:0] shamt;
+wire  cf, zf, vf, sf;
+assign shamt = Inst[5]? ReadData2[4:0]: gen_out[4:0]; //deciding on I-R types for shifting
 assign ReadAddress1 =   Inst[19:15];
 assign ReadAddress2 =   Inst[24:20];
 assign WriteAddress = Inst[11:7];
 assign DataMemIn = ALU_Result[7:2];
 assign func7 = Inst [30];
 assign func3 = Inst[14:12];
-wire ZFlag;
+
 assign PartialOpcode = Inst[6:2];
 wire [5:0] InstIn;
 assign InstIn = PCOut [7:2]; 
@@ -68,18 +71,18 @@ ALU_ControlUnit CU(ALUOp, func3,  func7 , ALUsel);
 Shift_Left #(32) Shift(gen_out , ShiftOut );
 RegisterFile RF  ( clk, rst, ReadAddress1,  ReadAddress2,  WriteAddress,  WriteData,  RegWrite, ReadData1,  ReadData2);
 Mux  ALUinMux (gen_out, ReadData2, ALUSrc, ALUin);
-ALU  OurALU( ReadData1, ALUin, ALUsel,ALU_Result,ZFlag);
+ALU  OurALU( ReadData1, ALUin,shamt, ALU_Result,cf, zf, vf, sf, ALUsel);
 DataMem DMem(clk, MemRead, MemWrite,DataMemIn, ReadData2,DataMemOut);
 Mux MemtoRegMux (DataMemOut, ALU_Result, MemtoReg, WriteData);
 assign BranchAdderOut = ShiftOut + PCOut;
 assign NormalAdderOut = PCOut +4;
-assign PCsel = Branch & ZFlag;
+assign PCsel = Branch & zf;
 Mux PCMux (BranchAdderOut,NormalAdderOut, PCsel, PCIn);
 always @(*) begin
 case (ledSel)
 2'b00: leds = Inst [15:0];
 2'b01: leds = Inst [31:16];
-2'b10: leds = {2'b00, ALUOp,ALUsel, ALUSrc,ZFlag,PCsel,Branch,MemRead,MemtoReg, MemWrite,RegWrite};
+2'b10: leds = {2'b00, ALUOp,ALUsel, ALUSrc,zf,PCsel,Branch,MemRead,MemtoReg, MemWrite,RegWrite};
 default: leds = 16'd0;
 endcase
 

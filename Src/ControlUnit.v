@@ -64,15 +64,6 @@ always @(*) begin
             RegWrite = 0;
         end
         
-         default: begin
-            Branch   = 1'bx;
-            MemRead  = 1'bx;
-            MemtoReg = 1'bx;  
-            ALUOp    = 2'bxx;
-            MemWrite = 1'bx;
-            ALUSrc   = 1'bx;
-            RegWrite = 1'bx;
-        end
     endcase
 end
 endmodule
