@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module BranchDelegator(input ZFlag, CFlag, SFlag, VFlag, Branch, input [2:0] func3, output MuxIn  );
+module BranchDelegator(input ZFlag, CFlag, SFlag, VFlag, Branch, input [2:0] func3, output reg MuxIn  );
 
 always @(*) begin
     case (func3)

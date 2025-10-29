@@ -19,49 +19,99 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-
-module ControlUnit(input [4:0] PartialOpcode, output reg Branch,output reg MemRead,output reg MemtoReg,output reg MemWrite,output reg ALUSrc,output reg RegWrite,output reg [1:0] ALUOp);
+`include "defines.v"
+module ControlUnit(input [4:0] PartialOpcode, output reg Branch,output reg MemRead,output reg[2:0] WDsel,output reg MemWrite,output reg ALUSrc,output reg RegWrite,output reg [1:0] ALUOp, output reg [1:0] PCsel);
 always @(*) begin
     case (PartialOpcode)
       
-        5'b01100: begin
+         `OPCODE_Arith_R: begin
             Branch   = 0;
             MemRead  = 0;
-            MemtoReg = 0;
+            WDsel = 0;
             ALUOp    = 2'b10;
             MemWrite = 0;
             ALUSrc   = 0;
             RegWrite = 1;
+            PCsel = 2'b00;
+        end
+        
+        `OPCODE_Arith_I: begin
+            Branch   = 0;
+            MemRead  = 0;
+            WDsel = 0;
+            ALUOp    = 2'b10;
+            MemWrite = 0;
+            ALUSrc   = 1;
+            RegWrite = 1;
+            PCsel = 2'b00;
         end
        
-        5'b00000: begin
+        `OPCODE_Load : begin
             Branch   = 0;
             MemRead  = 1;
-            MemtoReg = 1;
+            WDsel = 3'd1;
             ALUOp    = 2'b00;
             MemWrite = 0;
             ALUSrc   = 1;
             RegWrite = 1;
+            PCsel = 2'b00;
         end
         
-        5'b01000: begin
+        `OPCODE_Store : begin
             Branch   = 0;
             MemRead  = 0;
-            MemtoReg = 1'bx;  
+            WDsel = 3'bxxx;  
             ALUOp    = 2'b00;
             MemWrite = 1;
             ALUSrc   = 1;
             RegWrite = 0;
+            PCsel = 2'b00;
         end
        
-        5'b11000: begin
+        `OPCODE_Branch : begin
             Branch   = 1;
             MemRead  = 0;
-            MemtoReg = 1'bx;  
+            WDsel = 3'bxxx;  
             ALUOp    = 2'b01;
             MemWrite = 0;
             ALUSrc   = 0;
             RegWrite = 0;
+            PCsel = 2'b01;
+           end 
+       `OPCODE_JAL : begin
+         Branch   = 0;
+         MemRead  = 0;
+         WDsel = 3'b010; 
+         ALUOp    = 2'bxx; //No need for the ALU
+         MemWrite = 0;
+         ALUSrc   = 1'bx; 
+         RegWrite = 1;
+         PCsel = 2'b10;
+        end
+        
+       `OPCODE_JALR : begin
+         Branch   = 0;
+         MemRead  = 0;
+         WDsel = 3'b010; 
+         ALUOp    = 2'b00; //Add rs1 and IMM
+         MemWrite = 0;
+         ALUSrc   = 1;
+         RegWrite = 1;
+         PCsel = 2'b11;
+        end
+        `OPCODE_AUIPC : begin
+        // to be done
+        
+         WDsel = 3'b011; 
+         PCsel = 2'b00;
+         end
+        
+       `OPCODE_LUI : begin
+       
+       // to be done
+        WDsel = 3'b100; 
+        PCsel = 2'b00;
+        
         end
         
     endcase

@@ -20,13 +20,13 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module SingleCycle(input clk,rst,input [1:0] ledSel, input [3:0] ssdSel, output reg [15:0] leds, output reg [12:0] ssd );
+module SingleCycle(input clk,rst );
 wire [31:0] PCIn;
  wire [31:0] PCOut;
  wire [31:0] Inst;
  wire Branch;
  wire MemRead;
- wire MemtoReg;
+ wire [2:0] WDsel;
  wire MemWrite;
  wire ALUSrc;
  wire RegWrite;
@@ -49,9 +49,13 @@ wire [5:0] DataMemIn;
 wire [31:0] DataMemOut;
 wire [31:0] BranchAdderOut;
 wire [31:0] NormalAdderOut;
-wire PCsel;
+wire [31:0] JalAdderOut; //Jal/JalR
+wire [31:0] AUIPCadderOut; //AUIPC
+wire [1:0]  PCsel; 
 wire [4:0] shamt;
 wire  cf, zf, vf, sf;
+wire [31:0] LUIData;
+
 assign shamt = Inst[5]? ReadData2[4:0]: gen_out[4:0]; //deciding on I-R types for shifting
 assign ReadAddress1 =   Inst[19:15];
 assign ReadAddress2 =   Inst[24:20];
@@ -65,7 +69,7 @@ wire [5:0] InstIn;
 assign InstIn = PCOut [7:2]; 
 Register #(32) PC (clk,rst,1'b1, PCIn,PCOut);
 InstMem Mem(InstIn,Inst);
-ControlUnit control (PartialOpcode,  Branch, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, ALUOp);
+ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel);
 ImmGen  Gen(Inst, gen_out);
 ALU_ControlUnit CU(ALUOp, func3,  func7 , ALUsel);
 Shift_Left #(32) Shift(gen_out , ShiftOut );
@@ -73,36 +77,13 @@ RegisterFile RF  ( clk, rst, ReadAddress1,  ReadAddress2,  WriteAddress,  WriteD
 Mux  ALUinMux (gen_out, ReadData2, ALUSrc, ALUin);
 ALU  OurALU( ReadData1, ALUin,shamt, ALU_Result,cf, zf, vf, sf, ALUsel);
 DataMem DMem(clk, MemRead, MemWrite,DataMemIn, ReadData2,DataMemOut);
-Mux MemtoRegMux (DataMemOut, ALU_Result, MemtoReg, WriteData);
+WriteData_Selector SelD (WDsel,ALU_Result,DataMemOut,NormalAdderOut,AUIPCadderOut,LUIData, WriteData);
+
 assign BranchAdderOut = ShiftOut + PCOut;
 assign NormalAdderOut = PCOut +4;
-assign PCsel = Branch & zf;
-Mux PCMux (BranchAdderOut,NormalAdderOut, PCsel, PCIn);
-always @(*) begin
-case (ledSel)
-2'b00: leds = Inst [15:0];
-2'b01: leds = Inst [31:16];
-2'b10: leds = {2'b00, ALUOp,ALUsel, ALUSrc,zf,PCsel,Branch,MemRead,MemtoReg, MemWrite,RegWrite};
-default: leds = 16'd0;
-endcase
-
-case (ssdSel)
-4'b0000:ssd = PCOut[12:0];
-4'b0001: ssd= NormalAdderOut[12:0];
-4'b0010: ssd = BranchAdderOut [12:0];
-4'b0011: ssd = PCIn [12:0];
-4'b0100: ssd = ReadData1 [12:0];
-4'b0101: ssd = ReadData2 [ 12:0];
-4'b0110: ssd = WriteData [12:0];
-4'b0111: ssd = gen_out[12:0];
-4'b1000: ssd = ShiftOut[12:0];
-4'b1001: ssd = ALUin[12:0];
-4'b1010: ssd = ALU_Result[12:0];
-4'b1011: ssd = DataMemOut[12:0];
-default: ssd = 13'd0;
+assign JalAdderOut = PCOut + gen_out; // Jal Support
+PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,PCIn);// JalR will get the ALU result
 
 
-endcase
-end
 
 endmodule
