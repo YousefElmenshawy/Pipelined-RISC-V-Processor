@@ -55,7 +55,7 @@ wire [1:0]  PCsel;
 wire [4:0] shamt;
 wire  cf, zf, vf, sf;
 wire [31:0] LUIData;
-
+wire ConfirmBranch;
 assign shamt = Inst[5]? ReadData2[4:0]: gen_out[4:0]; //deciding on I-R types for shifting
 assign ReadAddress1 =   Inst[19:15];
 assign ReadAddress2 =   Inst[24:20];
@@ -82,7 +82,8 @@ WriteData_Selector SelD (WDsel,ALU_Result,DataMemOut,NormalAdderOut,AUIPCadderOu
 assign BranchAdderOut = ShiftOut + PCOut;
 assign NormalAdderOut = PCOut +4;
 assign JalAdderOut = PCOut + gen_out; // Jal Support
-PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,PCIn);// JalR will get the ALU result
+BranchDelegator Delg( zf, cf, sf, vf, Branch,  func3, ConfirmBranch );
+PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,ConfirmBranch,PCIn);// JalR will get the ALU result
 
 
 

@@ -20,37 +20,37 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module BranchDelegator(input ZFlag, CFlag, SFlag, VFlag, Branch, input [2:0] func3, output reg MuxIn  );
+module BranchDelegator(input ZFlag, CFlag, SFlag, VFlag, Branch, input [2:0] func3, output reg ConfirmBranch  );
 
 always @(*) begin
     case (func3)
       
         3'b000: begin //BEQ
-        if(Branch && ZFlag) MuxIn = 1'b1;
+        if(Branch && ZFlag) ConfirmBranch = 1'b1;
         end
         
         3'b001: begin  //BNE
-        if(Branch && ~ZFlag) MuxIn = 1'b1;
+        if(Branch && ~ZFlag) ConfirmBranch = 1'b1;
         end
         
         3'b100: begin  //BLT
-        if(Branch && (SFlag != VFlag)) MuxIn = 1'b1;
+        if(Branch && (SFlag != VFlag)) ConfirmBranch = 1'b1;
         end
         
         3'b101: begin  //BGE
-        if(Branch && (SFlag == VFlag)) MuxIn = 1'b1;
+        if(Branch && (SFlag == VFlag)) ConfirmBranch = 1'b1;
         end
         
         3'b110: begin  //BLTU
-        if(Branch && ~CFlag) MuxIn = 1'b1;
+        if(Branch && ~CFlag) ConfirmBranch = 1'b1;
         end
         
         3'b111: begin  //BGEU
-        if(Branch && CFlag) MuxIn = 1'b1;
+        if(Branch && CFlag) ConfirmBranch = 1'b1;
         end
         
         
-        default: MuxIn = 1'b0;
+        default: ConfirmBranch = 1'b0;
 
 endcase
 end

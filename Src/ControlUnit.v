@@ -35,7 +35,7 @@ always @(*) begin
             PCsel = 2'b00;
         end
         
-        `OPCODE_Arith_I: begin
+        `OPCODE_Arith_I: begin // I-Type Control Signals
             Branch   = 0;
             MemRead  = 0;
             WDsel = 0;

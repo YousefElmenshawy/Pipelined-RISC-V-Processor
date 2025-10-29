@@ -22,15 +22,18 @@
 
 module PC_Selector(input [31:0] BranchAdderOut,
 input [31:0]NormalAdderOut,
-input [31:0] JumpAdderOut,
+input [31:0] JalAdderOut,
+input [31:0] JALRdata,
 input [1:0] PCsel,
+input ConfirmBranch,
 output reg [31:0] PCIn);
 
 always@(*) begin
 case(PCsel)
 2'b00: PCIn = NormalAdderOut;
-2'b01: PCIn = BranchAdderOut;
-2'b10: PCIn = JumpAdderOut;
+2'b01: PCIn = ConfirmBranch ? BranchAdderOut: NormalAdderOut; // if the condition is true Branch otherwise 
+2'b10: PCIn = JalAdderOut;
+2'b11: PCIn = JALRdata;
 endcase
 end
 endmodule

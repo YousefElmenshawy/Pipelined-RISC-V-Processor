@@ -31,7 +31,7 @@ always@(*)begin
 case (WDsel)
 3'b000: WriteData = ALU_Result;
 3'b001: WriteData = MemReadData;
-3'b010: WriteData = JumpAdder;
+3'b010: WriteData = JumpAdder; // Jal or JalR both PC + 4 (NormallAdderOut in SingleCycle.v)
 3'b011: WriteData = AUIPCadder;
 3'b100: WriteData = LUIdata;
 endcase
