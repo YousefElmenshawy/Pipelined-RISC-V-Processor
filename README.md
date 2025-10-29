@@ -14,7 +14,7 @@ The single-cycle processor executes one instruction per clock cycle, with all st
 
 #### Datapath
 
-![Single-Cycle Datapath](./assets/SingleCycle_Datapath.png)
+![Single-Cycle Datapath](./Assets/SingleCycle_Datapath.png)
 
 #### Architecture Components
 
