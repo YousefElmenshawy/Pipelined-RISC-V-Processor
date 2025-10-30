@@ -56,6 +56,7 @@ wire [4:0] shamt;
 wire  cf, zf, vf, sf;
 wire [31:0] LUIData;
 wire ConfirmBranch;
+wire [1:0] BitSel;
 assign shamt = Inst[5]? ReadData2[4:0]: gen_out[4:0]; //deciding on I-R types for shifting
 assign ReadAddress1 =   Inst[19:15];
 assign ReadAddress2 =   Inst[24:20];
@@ -69,7 +70,7 @@ wire [5:0] InstIn;
 assign InstIn = PCOut [7:2]; 
 Register #(32) PC (clk,rst,1'b1, PCIn,PCOut);
 InstMem Mem(InstIn,Inst);
-ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel);
+ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel, BitSel);
 ImmGen  Gen(Inst, gen_out);
 ALU_ControlUnit CU(ALUOp, func3,  func7 , ALUsel);
 Shift_Left #(32) Shift(gen_out , ShiftOut );
@@ -85,6 +86,11 @@ assign JalAdderOut = PCOut + gen_out; // Jal Support
 BranchDelegator Delg( zf, cf, sf, vf, Branch,  func3, ConfirmBranch );
 PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,ConfirmBranch,PCIn);// JalR will get the ALU result
 
+
+//LUI and AUIPC 
+ShiftTwelve Shift(gen_out, LUIData);
+
+assign AUIPCadderOut = LUIData + PCOut;
 
 
 endmodule
