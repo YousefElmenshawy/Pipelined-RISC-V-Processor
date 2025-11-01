@@ -61,7 +61,7 @@ assign shamt = Inst[5]? ReadData2[4:0]: gen_out[4:0]; //deciding on I-R types fo
 assign ReadAddress1 =   Inst[19:15];
 assign ReadAddress2 =   Inst[24:20];
 assign WriteAddress = Inst[11:7];
-assign DataMemIn = ALU_Result[7:2];
+assign DataMemIn = ALU_Result[7:0];
 assign func7 = Inst [30];
 assign func3 = Inst[14:12];
 
@@ -77,7 +77,7 @@ Shift_Left #(32) Shift(gen_out , ShiftOut );
 RegisterFile RF  ( clk, rst, ReadAddress1,  ReadAddress2,  WriteAddress,  WriteData,  RegWrite, ReadData1,  ReadData2);
 Mux  ALUinMux (gen_out, ReadData2, ALUSrc, ALUin);
 ALU  OurALU( ReadData1, ALUin,shamt, ALU_Result,cf, zf, vf, sf, ALUsel);
-DataMem DMem(clk, MemRead, MemWrite,DataMemIn, ReadData2,DataMemOut);
+DataMem DMem(clk,func3, MemRead, MemWrite,DataMemIn, ReadData2,DataMemOut);
 WriteData_Selector SelD (WDsel,ALU_Result,DataMemOut,NormalAdderOut,AUIPCadderOut,LUIData, WriteData);
 
 assign BranchAdderOut = ShiftOut + PCOut;
@@ -88,7 +88,7 @@ PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,Conf
 
 
 //LUI and AUIPC 
-ShiftTwelve Shift(gen_out, LUIData);
+ShifterTwelve ShiftB(gen_out, LUIData);
 
 assign AUIPCadderOut = LUIData + PCOut;
 

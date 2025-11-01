@@ -18,9 +18,9 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
 `include "defines.v"
-module ControlUnit(input [4:0] PartialOpcode, output reg Branch,output reg MemRead,output reg[2:0] WDsel,output reg MemWrite,output reg ALUSrc,output reg RegWrite,output reg [1:0] ALUOp, output reg [1:0] PCsel);
+module ControlUnit(input [4:0] PartialOpcode, output reg Branch,output reg MemRead,output reg[2:0] WDsel,output reg MemWrite,output reg ALUSrc,output reg RegWrite,output reg [1:0] ALUOp, output reg [1:0] PCsel, output reg [1:0] Bitsel);
+
 always @(*) begin
     case (PartialOpcode)
       
@@ -100,16 +100,26 @@ always @(*) begin
          PCsel = 2'b11;
         end
         `OPCODE_AUIPC : begin
-        // to be done
         
+         Branch   = 0;
+         MemRead  = 0;
          WDsel = 3'b011; 
+         ALUOp    = 2'bxx;
+         MemWrite = 0;
+         ALUSrc   = 1'bx;
+         RegWrite = 1;
          PCsel = 2'b00;
          end
         
        `OPCODE_LUI : begin
-       
-       // to be done
+    
+        Branch   = 0;
+        MemRead  = 0;
         WDsel = 3'b100; 
+        ALUOp    = 2'bxx;
+        MemWrite = 0;
+        ALUSrc   = 1'bx;
+        RegWrite = 1;
         PCsel = 2'b00;
         
         end

@@ -19,26 +19,37 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-module DataMem(input clk, input MemRead, input MemWrite,
-input [5:0] addr, input [31:0] data_in, output reg [31:0] data_out);
-reg [31:0] mem [0:63];
+module DataMem(input clk,input [2:0] func3, input MemRead, input MemWrite,
+input [7:0] addr, input [31:0] data_in, output reg [31:0] data_out);
+reg [7:0] mem [0:255];
  integer j;
 initial begin
-  for (j = 0; j < 64; j = j + 1)
+  for (j = 0; j < 255; j = j + 1)
       mem[j] = 0;
  end
 always@ (posedge clk) begin
 if(MemWrite)
-mem[addr] <= data_in ;
+case(func3)
+3'b000:  mem[addr] <= data_in[7:0]; //sb
+3'b001: {mem[addr+1], mem[addr]}<= data_in[15:0]; //shw
+3'b010: {mem[addr+3], mem[addr+2], mem[addr+1], mem[addr]} <= data_in ; //sw
+endcase
 end
 always@ (*) begin
 if(MemRead)
- data_out =  mem[addr];
+case(func3)
+ 3'b000: data_out = {{ 24{mem[addr][7]}} ,mem[addr]};      //lb
+ 3'b001: data_out = {{16{mem[addr][7]}}, mem[addr+1], mem[addr]};           //lhw
+ 3'b010: data_out = { mem[addr+3], mem[addr+2], mem[addr+1], mem[addr]};  //LW
+ 3'b100: data_out = {24'b0, mem[addr]}; //lbu
+ 3'b101: data_out = {16'b0, mem[addr+1], mem[addr]};  //lhu
+ default: data_out = 32'bx;
+ endcase
 end
  
 initial begin
-mem[0]=32'd17;
-mem[1]=32'd9;
-mem[2]=32'd25;
+mem[0]=8'd17;
+mem[1]=8'd9;
+mem[2]=8'd25;
 end
 endmodule
