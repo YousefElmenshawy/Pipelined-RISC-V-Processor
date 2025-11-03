@@ -34,7 +34,7 @@ module ALU(
     
     assign op_b = (~b);
     
-    assign {cf, add} = alufn[0] ? (a + op_b + 1'b1) : (a + b);
+    assign {cf, add} = alufn[2] ? (a + op_b + 1'b1) : (a + b);
     
     assign zf = (add == 0);
     assign sf = add[31];
@@ -48,8 +48,8 @@ module ALU(
         (* parallel_case *)
         case (alufn)
             // arithmetic
-            4'b00_00 : r = add;
-            4'b00_01 : r = add;
+            4'b0110 : r = add;
+            4'b00_10 : r = add;
             4'b00_11 : r = b;
             // logic
             4'b01_00:  r = a | b;

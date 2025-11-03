@@ -64,13 +64,14 @@ assign WriteAddress = Inst[11:7];
 assign DataMemIn = ALU_Result[7:0];
 assign func7 = Inst [30];
 assign func3 = Inst[14:12];
+wire BreakSel;
 
 assign PartialOpcode = Inst[6:2];
 wire [5:0] InstIn;
 assign InstIn = PCOut [7:2]; 
 Register #(32) PC (clk,rst,1'b1, PCIn,PCOut);
 InstMem Mem(InstIn,Inst);
-ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel, BitSel);
+ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel, BreakSel);
 ImmGen  Gen(Inst, gen_out);
 ALU_ControlUnit CU(ALUOp, func3,  func7 , ALUsel);
 Shift_Left #(32) Shift(gen_out , ShiftOut );
@@ -81,7 +82,7 @@ DataMem DMem(clk,func3, MemRead, MemWrite,DataMemIn, ReadData2,DataMemOut);
 WriteData_Selector SelD (WDsel,ALU_Result,DataMemOut,NormalAdderOut,AUIPCadderOut,LUIData, WriteData);
 
 assign BranchAdderOut = ShiftOut + PCOut;
-assign NormalAdderOut = PCOut +4;
+assign NormalAdderOut = (BreakSel) ? (PCOut): (PCOut +4);
 assign JalAdderOut = PCOut + gen_out; // Jal Support
 BranchDelegator Delg( zf, cf, sf, vf, Branch,  func3, ConfirmBranch );
 PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,ConfirmBranch,PCIn);// JalR will get the ALU result
