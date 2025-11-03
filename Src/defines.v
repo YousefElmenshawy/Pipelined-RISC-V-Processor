@@ -17,6 +17,9 @@
 `define     OPCODE_LUI      5'b01_101
 `define     OPCODE_SYSTEM   5'b11_100 
 `define     OPCODE_Custom   5'b10_001
+`define     OPCODE_FENCE    5'b000_11
+
+
 
 `define     F3_ADD          3'b000
 `define     F3_SLL          3'b001

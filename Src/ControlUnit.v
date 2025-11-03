@@ -19,7 +19,7 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 `include "defines.v"
-module ControlUnit(input [4:0] PartialOpcode, output reg Branch,output reg MemRead,output reg[2:0] WDsel,output reg MemWrite,output reg ALUSrc,output reg RegWrite,output reg [1:0] ALUOp, output reg [1:0] PCsel, output reg [1:0] Bitsel);
+module ControlUnit(input [4:0] PartialOpcode, output reg Branch,output reg MemRead,output reg[2:0] WDsel,output reg MemWrite,output reg ALUSrc,output reg RegWrite,output reg [1:0] ALUOp, output reg [1:0] PCsel, output reg BreakSel);
 
 always @(*) begin
     case (PartialOpcode)
@@ -33,6 +33,7 @@ always @(*) begin
             ALUSrc   = 0;
             RegWrite = 1;
             PCsel = 2'b00;
+            BreakSel = 1'b0;
         end
         
         `OPCODE_Arith_I: begin // I-Type Control Signals
@@ -44,6 +45,8 @@ always @(*) begin
             ALUSrc   = 1;
             RegWrite = 1;
             PCsel = 2'b00;
+            BreakSel = 1'b0;
+
         end
        
         `OPCODE_Load : begin
@@ -55,6 +58,7 @@ always @(*) begin
             ALUSrc   = 1;
             RegWrite = 1;
             PCsel = 2'b00;
+            BreakSel = 1'b0;
         end
         
         `OPCODE_Store : begin
@@ -66,6 +70,7 @@ always @(*) begin
             ALUSrc   = 1;
             RegWrite = 0;
             PCsel = 2'b00;
+            BreakSel = 1'b0;
         end
        
         `OPCODE_Branch : begin
@@ -77,6 +82,7 @@ always @(*) begin
             ALUSrc   = 0;
             RegWrite = 0;
             PCsel = 2'b01;
+            BreakSel = 1'b0;
            end 
        `OPCODE_JAL : begin
          Branch   = 0;
@@ -87,6 +93,7 @@ always @(*) begin
          ALUSrc   = 1'bx; 
          RegWrite = 1;
          PCsel = 2'b10;
+         BreakSel = 1'b0;
         end
         
        `OPCODE_JALR : begin
@@ -98,6 +105,7 @@ always @(*) begin
          ALUSrc   = 1;
          RegWrite = 1;
          PCsel = 2'b11;
+         BreakSel = 1'b0;
         end
         `OPCODE_AUIPC : begin
         
@@ -109,6 +117,7 @@ always @(*) begin
          ALUSrc   = 1'bx;
          RegWrite = 1;
          PCsel = 2'b00;
+         BreakSel = 1'b0;
          end
         
        `OPCODE_LUI : begin
@@ -121,8 +130,35 @@ always @(*) begin
         ALUSrc   = 1'bx;
         RegWrite = 1;
         PCsel = 2'b00;
+        BreakSel = 1'b0;
         
         end
+        
+       `OPCODE_SYSTEM : begin
+        Branch   = 0;
+        MemRead  = 0;
+        WDsel = 3'b000; 
+        ALUOp    = 2'b00;
+        MemWrite = 0;
+        ALUSrc   = 1'b0;
+        RegWrite = 0;
+        PCsel = 2'b00;
+        BreakSel = 1'b1;
+        end
+        
+        `OPCODE_FENCE : begin
+         Branch   = 0;
+        MemRead  = 0;
+        WDsel = 3'b000; 
+        ALUOp    = 2'b00;
+        MemWrite = 0;
+        ALUSrc   = 1'b0;
+        RegWrite = 0;
+        PCsel = 2'b00;
+        BreakSel = 1'b1;
+        end
+        
+        
         
     endcase
 end
