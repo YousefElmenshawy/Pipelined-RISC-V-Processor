@@ -45,7 +45,7 @@ wire [31:0] ReadData2;
 wire [4:0] PartialOpcode;
 wire [31:0] ALUin;
 wire [31:0] ALU_Result;
-wire [5:0] DataMemIn;
+wire [7:0] DataMemIn;
 wire [31:0] DataMemOut;
 wire [31:0] BranchAdderOut;
 wire [31:0] NormalAdderOut;
@@ -56,7 +56,7 @@ wire [4:0] shamt;
 wire  cf, zf, vf, sf;
 wire [31:0] LUIData;
 wire ConfirmBranch;
-wire [1:0] BitSel;
+
 assign shamt = Inst[5]? ReadData2[4:0]: gen_out[4:0]; //deciding on I-R types for shifting
 assign ReadAddress1 =   Inst[19:15];
 assign ReadAddress2 =   Inst[24:20];

@@ -43,13 +43,7 @@ case(func3)
  3'b010: data_out = { mem[addr+3], mem[addr+2], mem[addr+1], mem[addr]};  //LW
  3'b100: data_out = {24'b0, mem[addr]}; //lbu
  3'b101: data_out = {16'b0, mem[addr+1], mem[addr]};  //lhu
- default: data_out = 32'bx;
+ default: data_out = 32'b0;
  endcase
-end
- 
-initial begin
-mem[0]=8'd17;
-mem[1]=8'd9;
-mem[2]=8'd25;
 end
 endmodule

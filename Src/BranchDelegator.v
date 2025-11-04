@@ -27,26 +27,38 @@ always @(*) begin
       
         3'b000: begin //BEQ
         if(Branch && ZFlag) ConfirmBranch = 1'b1;
+        else
+        ConfirmBranch=1'b0;
         end
         
         3'b001: begin  //BNE
         if(Branch && ~ZFlag) ConfirmBranch = 1'b1;
+        else
+        ConfirmBranch=1'b0;
         end
         
         3'b100: begin  //BLT
         if(Branch && (SFlag != VFlag)) ConfirmBranch = 1'b1;
+        else
+        ConfirmBranch=1'b0;
         end
         
         3'b101: begin  //BGE
         if(Branch && (SFlag == VFlag)) ConfirmBranch = 1'b1;
+        else
+        ConfirmBranch=1'b0;
         end
         
         3'b110: begin  //BLTU
         if(Branch && ~CFlag) ConfirmBranch = 1'b1;
+        else
+        ConfirmBranch=1'b0;
         end
         
         3'b111: begin  //BGEU
         if(Branch && CFlag) ConfirmBranch = 1'b1;
+        else
+        ConfirmBranch=1'b0;
         end
         
         

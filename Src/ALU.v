@@ -29,8 +29,8 @@ module ALU(
 	input   wire [3:0]  alufn
 );
 
-    wire [31:0] add, sub, op_b;
-    wire cfa, cfs;
+    wire [31:0] add, op_b;
+   
     
     assign op_b = (~b);
     
@@ -52,8 +52,8 @@ module ALU(
             4'b00_10 : r = add;
             4'b00_11 : r = b;
             // logic
-            4'b01_00:  r = a | b;
-            4'b01_01:  r = a & b;
+            4'b0001:  r = a | b;
+            4'b0000:  r = a & b;
             4'b01_11:  r = a ^ b;
             // shift
             4'b10_00:  r=sh;

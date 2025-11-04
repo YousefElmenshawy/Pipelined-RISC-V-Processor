@@ -29,9 +29,9 @@ forever#(5) clk = ~clk;
 
 end
 initial begin
-rst = 0;
+rst = 1;
 #10
-rst =1;
+rst =0;
 
 end
 endmodule
