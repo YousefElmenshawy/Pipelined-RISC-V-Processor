@@ -1,0 +1,3 @@
+[submodule "RV32I_TestGen"]
+	path = RV32I_TestGen
+	url = https://github.com/Kareem-Rashed/RiscRandomProgramGenerator.git
