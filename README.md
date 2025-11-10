@@ -19,44 +19,52 @@ The single-cycle processor executes one instruction per clock cycle, with all st
 #### Architecture Components
 
 **Instruction Fetch & Decode**
-- **Program Counter (PC)**: 32-bit register maintaining current instruction address
-- **Instruction Memory**: Read-only memory storing program instructions
-- **Immediate Generator**: Extracts and sign-extends immediate values from instructions
+- **Program Counter (PC)**: 32-bit register maintaining current instruction address — implemented in the single-cycle top module (`SingleCycle.v`) using the flip-flop primitive (`DFlipFlop.v`).
+- **Instruction Memory**: Read-only memory storing program instructions (`InstMem.v`).
+- **Immediate Generator**: Extracts and sign-extends immediate values from instructions (`ImmGen.v`).
 
 **Execution**
-- **Register File**: 32 general-purpose registers (x0-x31)
-- **ALU (Arithmetic Logic Unit)**: Performs arithmetic and logical operations
-- **ALU Control Unit**: Generates control signals based on instruction type and function codes
-- **Shift Unit**: Handles logical/arithmetic shift operations
+- **Register File**: 32 general-purpose registers (x0-x31) (`RegisterFile.v`).
+- **Register & Register primitives**: Individual register and flip-flop modules (`Register.v`, `DFlipFlop.v`).
+- **ALU (Arithmetic Logic Unit)**: Performs arithmetic and logical operations (`ALU.v`).
+- **ALU Control Unit**: Generates ALU control signals from instruction funct fields and main control (`ALU_ControlUnit.v`).
+- **Shift Units**: Shift-left and generic shifter modules used for shift/branch computations (`Shift_Left.v`, `Shifter.v`, `ShifterTwelve.v`).
+- **Multiplexers / Selectors**: Generic mux primitives used across the datapath (`Mux.v`).
 
 **Memory Access**
-- **Data Memory**: Read/write memory for load/store operations
-- **Branch Delegator**: Evaluates branch conditions (BEQ, BNE, BLT, BGE, BLTU, BGEU)
+- **Data Memory**: Read/write memory for load/store operations (`DataMem.v`).
+- **Branch Delegator**: Evaluates branch conditions (BEQ, BNE, BLT, BGE, BLTU, BGEU) (`BranchDelegator.v`).
 
-**Write Back**
-- **Write Data Selector**: Multiplexes between ALU result, memory data, PC+4, AUIPC result, and LUI data
+**Write Back / Control**
+- **Write Data Selector**: Multiplexes between ALU result, memory data, PC+4, AUIPC result, and LUI data (`WriteData_Selector.v`).
+- **Control Unit**: Main control logic producing control signals from opcode/func (`ControlUnit.v`).
+- **PC Selector**: Next-PC multiplexer handling branch/jump selection (`PC_Selector.v`).
 
 #### Control Signals
 
-| Signal | Description |
-|--------|-------------|
-| `Branch` | Enables conditional branching |
-| `MemRead` | Enables data memory read |
-| `MemWrite` | Enables data memory write |
-| `ALUSrc` | Selects between register or immediate for ALU |
-| `RegWrite` | Enables register file write |
-| `ALUOp[1:0]` | Determines ALU operation category |
+| Signal       | Description                                     |
+|--------------|-------------------------------------------------|
+| `Branch`     | Enables conditional branching                   |
+| `MemRead`    | Enables data memory read                        |
+| `MemWrite`   | Enables data memory write                       |
+| `ALUSrc`     | Selects between register or immediate for ALU   |
+| `RegWrite`   | Enables register file write                     |
+| `ALUOp[1:0]` | Determines ALU operation category               |
 | `PCsel[1:0]` | Selects next PC value (PC+4, branch, JAL, JALR) |
-| `WDsel[2:0]` | Selects write-back data source |
+| `WDsel[2:0]` | Selects write-back data source                  |
+| `BreakSel`   | Selects Mux of PC +4 OR PC +0 in case of SYS    |
 
 #### Supported Instructions
 
 **R-Type**: ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU  
-**I-Type**: ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU, LW, JALR  
-**S-Type**: SW  
+**I-Type**: ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU, LW,LHW,LHWU,LB,LBU, JALR  
+**S-Type**: SW, SH, SB 
 **B-Type**: BEQ, BNE, BLT, BGE, BLTU, BGEU  
 **U-Type**: LUI, AUIPC  
 **J-Type**: JAL
+**SYS-type**: ECALL, EBREAK, PAUSE, FENCE, FENCE.tso
+
+> Note: The supported instruction set is implemented across the control unit, ALU, register file, and memory modules listed above (see `Src/` files).
 
 #### Key Features
 
@@ -69,19 +77,23 @@ The single-cycle processor executes one instruction per clock cycle, with all st
 #### Module Hierarchy
 
 ```
-SingleCycle (Top Module)
-├── PC (Program Counter Register)
-├── InstMem (Instruction Memory)
-├── ControlUnit (Main Control Unit)
-├── ImmGen (Immediate Generator)
-├── RegisterFile (32 Registers)
-├── ALU (Arithmetic Logic Unit)
-├── ALU_ControlUnit (ALU Control)
-├── Shift_Left (Shift Unit)
-├── DataMem (Data Memory)
-├── BranchDelegator (Branch Logic)
-├── PC_Selector (Next PC Multiplexer)
-└── WriteData_Selector (Write-back Multiplexer)
+SingleCycle (Top Module - SingleCycle.v)
+├── InstMem.v (Instruction Memory)
+├── ControlUnit.v (Main Control Unit)
+├── ImmGen.v (Immediate Generator)
+├── RegisterFile.v (Register file / 32 registers)
+├── Register.v (Register primitive)
+├── DFlipFlop.v (Flip-flop primitive)
+├── ALU.v (Arithmetic Logic Unit)
+├── ALU_ControlUnit.v (ALU Control)
+├── Shift_Left.v (Shift-left unit)
+├── Shifter.v (Shifter / shift operations)
+├── ShifterTwelve.v (Shifter helper / small shifts)
+├── Mux.v (Multiplexers)
+├── DataMem.v (Data Memory)
+├── BranchDelegator.v (Branch Logic)
+├── PC_Selector.v (Next PC multiplexer)
+└── WriteData_Selector.v (Write-back multiplexer)
 ```
 
 ### Milestone 2: Pipelined Implementation 🚧
@@ -102,22 +114,50 @@ The pipelined implementation will introduce five pipeline stages with hazard det
 ```
 Pipelined-RISC-V-Processor/
 ├── README.md
-├── assets/
-│   └── single-cycle-datapath.png
-├── src/
-│   ├── SingleCycle.v
-│   ├── PC.v
-│   ├── InstMem.v
-│   ├── ControlUnit.v
-│   ├── ImmGen.v
-│   ├── RegisterFile.v
+├── Assets/
+│   └── SingleCycle_Datapath.png
+├── Src/
 │   ├── ALU.v
 │   ├── ALU_ControlUnit.v
-│   ├── DataMem.v
 │   ├── BranchDelegator.v
-│   └── ... (other modules)
-└── testbenches/
-    └── ... (test files)
+│   ├── ControlUnit.v
+│   ├── DataMem.v
+│   ├── defines.v
+│   ├── DFlipFlop.v
+│   ├── ImmGen.v
+│   ├── InstMem.v
+│   ├── Mux.v
+│   ├── PC_Selector.v
+│   ├── Register.v
+│   ├── RegisterFile.v
+│   ├── Shifter.v
+│   ├── ShifterTwelve.v
+│   ├── Shift_Left.v
+│   ├── SingleCycle.v
+│   └── WriteData_Selector.v
+├── TB/
+│   └── Program_tb.v
+├── RV32I_TestGen/
+│   ├── CMakeLists.txt
+│   ├── Generator.cpp
+│   ├── Generator.h
+│   └── main.cpp
+│   ├── TestCases/
+│   │   ├── TC_R/
+│   │   ├── TC_I/
+│   │   ├── TC_S/
+│   │   ├── TC_U/
+│   │   ├── TC_B/
+│   │   └── TC_J/
+│   └── MemData/
+│       ├── Mem_R/
+│       ├── Mem_I/
+│       ├── Mem_S/
+│       ├── Mem_U/
+│       ├── Mem_B/
+│       └── Mem_J/
+└── Assets/
+    └── SingleCycle_Datapath.png
 ```
 
 ## Getting Started
@@ -168,7 +208,8 @@ This project is developed for educational purposes.
 
 ## Contributors
 
-*Add your name and contributions here*
+- *Yousef Elmenshawy*
+- *Kareem Rashed*
 
 ---
 
