@@ -43,6 +43,19 @@ else if (func3==3'b000)
  else if (func3 == 3'b100 && func7==0)
  ALUsel = 4'b0111; //xor
 end
+ 2'b11: begin
+    // I-type arithmetic (ADDI, SLTI, ANDI, etc.)
+    case (func3)
+      3'b000: ALUsel = 4'b0010; // ADDI ? always ADD
+      3'b111: ALUsel = 4'b0000; // ANDI
+      3'b110: ALUsel = 4'b0001; // ORI
+      3'b100: ALUsel = 4'b0111; // XORI
+      3'b010: ALUsel = 4'b1101; // SLTI
+      3'b011: ALUsel = 4'b1111; // SLTIU
+      3'b001: ALUsel = 4'b1000; // SLLI
+      3'b101: ALUsel = func7 ? 4'b1010 : 4'b1001; // SRAI/SRLI
+    endcase
+  end
 endcase
 end
    

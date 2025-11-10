@@ -40,7 +40,7 @@ always @(*) begin
             Branch   = 0;
             MemRead  = 0;
             WDsel = 0;
-            ALUOp    = 2'b10;
+            ALUOp    = 2'b11;
             MemWrite = 0;
             ALUSrc   = 1;
             RegWrite = 1;
