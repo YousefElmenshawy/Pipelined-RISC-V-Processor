@@ -1,0 +1,199 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 10/20/2025 12:55:41 PM
+// Design Name: 
+// Module Name: SingleCycle
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module Pipelined(input clk,rst );
+wire [31:0] PCIn;
+ wire [31:0] PCOut;
+ wire [31:0] Inst;
+ wire Branch;
+ wire MemRead;
+ wire [2:0] WDsel;
+ wire MemWrite;
+ wire ALUSrc;
+ wire RegWrite;
+ wire [1:0] ALUOp;
+ wire [31:0]gen_out;
+ wire [2:0] func3;
+ wire func7;
+ wire [3:0] ALUsel;
+ wire [31:0] ShiftOut;
+ wire [4:0] ReadAddress1;
+wire [4:0] ReadAddress2;
+wire [4:0] WriteAddress;
+wire [31:0] WriteData;
+wire [31:0] ReadData1;
+wire [31:0] ReadData2;
+wire [4:0] PartialOpcode;
+wire [31:0] ALUin;
+wire [31:0] ALU_Result;
+wire [7:0] DataMemIn;
+wire [31:0] DataMemOut;
+wire [31:0] BranchAdderOut;
+wire [31:0] NormalAdderOut;
+wire [31:0] JalAdderOut; //Jal/JalR
+wire [31:0] AUIPCadderOut; //AUIPC
+wire [1:0]  PCsel; 
+wire [4:0] shamt;
+wire  cf, zf, vf, sf;
+wire [31:0] LUIData;
+wire ConfirmBranch;
+
+
+
+assign shamt = ID_EX_ShiftCheck? ID_EX_RegR2[4:0]: ID_EX_Imm[4:0]; //deciding on I-R types for shifting
+assign ReadAddress1 =   IF_ID_Inst[19:15];
+assign ReadAddress2 =   IF_ID_Inst[24:20];
+assign WriteAddress = IF_ID_Inst[11:7];
+assign DataMemIn = ALU_Result[7:0];
+assign func7 = IF_ID_Inst [30];
+assign func3 = IF_ID_Inst[14:12];
+assign PartialOpcode = IF_ID_Inst[6:2];
+
+
+
+wire BreakSel;
+
+
+//  START OF     IF         /////////////////////////////////////
+
+wire [31:0] IF_ID_PC, IF_ID_Inst;
+Register #(64) IF_ID (clk,rst,1'b1,{PCOut,Inst}
+,{IF_ID_PC,IF_ID_Inst} );
+
+
+
+
+//  START OF     ID         /////////////////////////////////////
+
+
+wire [31:0] ID_EX_PC, ID_EX_RegR1, ID_EX_RegR2, ID_EX_Imm;
+wire [7:0] ID_EX_Ctrl;
+wire ID_EX_BSel;
+wire ID_EX_ShiftCheck;
+wire [2:0] ID_EX_WDSel;
+wire [3:0] ID_EX_Func;
+wire [4:0] ID_EX_Rs1, ID_EX_Rs2, ID_EX_Rd;
+
+
+RegisterFile RF  ( clk, rst, ReadAddress1,  ReadAddress2,  MEM_WB_Rd,  WriteData,  MEM_WB_Ctrl[1], ReadData1,  ReadData2);   // RF
+
+
+ImmGen  Gen(IF_ID_Inst, gen_out);
+Shift_Left #(32) Shift(gen_out , ShiftOut );
+
+ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel, BreakSel);
+
+
+Register #(160) ID_EX (clk,rst,1'b1,{RegWrite,1'b0,MemRead,MemWrite, Branch ,ALUOp,ALUSrc,IF_ID_PC,
+ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, BreakSel, WDsel, IF_ID_Inst[5]},
+
+{ID_EX_Ctrl,ID_EX_PC,ID_EX_RegR1,ID_EX_RegR2,
+ID_EX_Imm, ID_EX_Func,ID_EX_Rs1,ID_EX_Rs2,ID_EX_Rd, ID_EX_BSel, ID_EX_WDSel, ID_EX_ShiftCheck} );
+
+// Rs1 and Rs2 are needed later for the forwarding unit
+
+
+//  START OF     EX         /////////////////////////////////////
+
+
+
+
+wire [31:0] EX_MEM_BranchAddOut, EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_NormalAdderOut, EX_MEM_AUIPCadderOut, EX_MEM_LUIData;
+wire [4:0] EX_MEM_Ctrl;
+
+wire [4:0] EX_MEM_Rd;
+wire EX_MEM_Zero;
+wire[2:0] EX_MEM_WDSel;
+
+Mux  ALUinMux (ID_EX_Imm, ID_EX_RegR2, ID_EX_Ctrl[0], ALUin);
+
+ALU  OurALU( ID_EX_RegR1, ALUin,shamt, ALU_Result,cf, zf, vf, sf, ALUsel);
+
+ALU_ControlUnit CU(ID_EX_Ctrl[2:1], ID_EX_Func[2:0],  ID_EX_Func[3] , ALUsel);
+
+
+BranchDelegator Delg( zf, cf, sf, vf, Branch,  func3, ConfirmBranch );
+
+
+Register #(206) EX_MEM (clk,rst,1'b1,
+{ID_EX_Ctrl[7:3],BranchAdderOut,ZFlag,ALU_Result,ID_EX_RegR2,ID_EX_Rd, ID_EX_WDSel, NormalAdderOut, AUIPCadderOut, LUIData},
+{EX_MEM_Ctrl, EX_MEM_BranchAddOut, EX_MEM_Zero,
+EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_Rd,  EX_MEM_WDSel, EX_MEM_NormalAdderOut, EX_MEM_AUIPCadderOut, EX_MEM_LUIData} );
+
+
+
+
+
+
+
+
+//  START OF     MEM        /////////////////////////////////////
+
+
+wire [31:0] MEM_WB_Mem_out, MEM_WB_ALU_out, MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUIData;
+wire [1:0]  MEM_WB_Ctrl;
+wire [2:0]  MEM_WB_WDSel;
+
+wire [4:0] MEM_WB_Rd;
+Register #(170) MEM_WB (clk,rst,1'b1,
+{EX_MEM_Ctrl[4:3],DataMemOut,EX_MEM_ALU_out,EX_MEM_Rd, EX_MEM_WDSel, EX_MEM_NormalAdderOut,EX_MEM_AUIPCadderOut, EX_MEM_LUIData },
+
+{MEM_WB_Ctrl,MEM_WB_Mem_out, MEM_WB_ALU_out,
+MEM_WB_Rd, MEM_WB_WDSel,MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUIData } );
+
+
+
+
+
+wire [5:0] InstIn;
+assign InstIn = PCOut [7:2]; 
+
+Register #(32) PC (clk,rst,1'b1, PCIn,PCOut);
+InstMem Mem(InstIn,Inst);
+//DataMem (clk, EX_MEM_Ctrl[2], EX_MEM_Ctrl[1],EX_MEM_ALU_out[7:0], EX_MEM_RegR2,DataMemOut);
+DataMem DMem(
+    .clk(clk),
+    .func3(3'b010),
+    .MemRead(EX_MEM_Ctrl[2]),
+    .MemWrite(EX_MEM_Ctrl[1]),
+    .addr(EX_MEM_ALU_out[7:0]),
+    .data_in(EX_MEM_RegR2),
+    .data_out(DataMemOut)
+    );
+
+WriteData_Selector SelD (MEM_WB_WDSel,MEM_WB_ALU_out,MEM_WB_Mem_out,MEM_WB_NormalAdderOut,MEM_WB_AUIPCadderOut,MEM_WB_LUIData, WriteData);
+
+assign BranchAdderOut = ShiftOut + ID_EX_PC;
+assign NormalAdderOut = (BreakSel) ? (ID_EX_PC): (ID_EX_PC +4);
+assign JalAdderOut = ID_EX_PC + gen_out; // Jal Support
+PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,ConfirmBranch,PCIn);// JalR will get the ALU result
+
+//Mux MemtoRegMux (MEM_WB_Mem_out, MEM_WB_ALU_out, MEM_WB_Ctrl[0], WriteData);
+
+
+//LUI and AUIPC 
+ShifterTwelve ShiftB(gen_out, LUIData);
+
+assign AUIPCadderOut = LUIData + ID_EX_PC;
+
+
+endmodule

@@ -27,6 +27,13 @@ initial begin
   for (j = 0; j < 255; j = j + 1)
       mem[j] = 0;
  end
+ 
+initial begin
+mem[0]=32'd17;
+mem[4]=32'd9;
+mem[8]=32'd25;
+
+end
 always@ (posedge clk) begin
 if(MemWrite)
 case(func3)
