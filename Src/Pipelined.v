@@ -77,9 +77,21 @@ wire BreakSel;
 
 Register #(32) PC (clk,rst,~stall, PCIn,PCOut);
 
+reg PC_Control;
+wire [63:0] PC_and_Inst_In;
+always@ (*)begin
+if(ID_EX_PC_sel == 2'b10)
+PC_Control = 1'b1;
+else
+PC_Control=1'b0;
+end
+
+
+
+Mux#(64) Control_ID_Mux (64'b0,{PCOut,Inst},PC_Control, PC_and_Inst_In);
 
 wire [31:0] IF_ID_PC, IF_ID_Inst;
-Register #(64) IF_ID (clk,rst,~stall,{PCOut,Inst}
+Register #(64) IF_ID (clk,rst,~stall,PC_and_Inst_In
 ,{IF_ID_PC,IF_ID_Inst} );
 
 
@@ -90,6 +102,7 @@ Register #(64) IF_ID (clk,rst,~stall,{PCOut,Inst}
 
 wire [31:0] ID_EX_PC, ID_EX_RegR1, ID_EX_RegR2, ID_EX_Imm;
 wire [7:0] ID_EX_Ctrl;
+wire [1:0] ID_EX_PC_sel;
 wire ID_EX_BSel;
 wire ID_EX_ShiftCheck;
 wire [2:0] ID_EX_WDSel;
@@ -106,13 +119,13 @@ ImmGen  Gen(IF_ID_Inst, gen_out);
 ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel, BreakSel);
 wire [7:0] ControlIn;
 wire [2:0] WDselIn;
-Mux#(3) WDsel_Mux(3'b0,WDsel,stall,WDselIn);
-Mux#(8) EX_Control_Mux(8'b0,{RegWrite,1'b0,MemRead,MemWrite, Branch ,ALUOp,ALUSrc}, stall, ControlIn);
-Register #(160) ID_EX (clk,rst,1'b1,{ControlIn,IF_ID_PC,
-ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, BreakSel, WDselIn, IF_ID_Inst[5]},
+Mux#(3) WDsel_Mux(3'b0,WDsel,stall|PC_Control,WDselIn);
+Mux#(8) EX_Control_Mux(8'b0,{RegWrite,1'b0,MemRead,MemWrite, Branch ,ALUOp,ALUSrc}, stall|PC_Control, ControlIn);
+Register #(162) ID_EX (clk,rst,1'b1,{ControlIn,IF_ID_PC,
+ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, BreakSel, WDselIn, IF_ID_Inst[5],PCsel},
 
 {ID_EX_Ctrl,ID_EX_PC,ID_EX_RegR1,ID_EX_RegR2,
-ID_EX_Imm, ID_EX_Func,ID_EX_Rs1,ID_EX_Rs2,ID_EX_Rd, ID_EX_BSel, ID_EX_WDSel, ID_EX_ShiftCheck} );
+ID_EX_Imm, ID_EX_Func,ID_EX_Rs1,ID_EX_Rs2,ID_EX_Rd, ID_EX_BSel, ID_EX_WDSel, ID_EX_ShiftCheck,ID_EX_PC_sel} );
 
 // Rs1 and Rs2 are needed later for the forwarding unit
 
@@ -169,8 +182,12 @@ ALU_ControlUnit CU(ID_EX_Ctrl[2:1], ID_EX_Func[2:0],  ID_EX_Func[3] , ALUsel);
 BranchDelegator Delg( zf, cf, sf, vf, Branch,  func3, ConfirmBranch );
 
 wire [2:0] EX_MEM_Func3;
+wire [4:0] EX_MEM_ControlIn;
+wire [2:0]  WD_ControlIn;   // Branch Flushing. ......
+Mux #(3) WD_sel_ControlIn (3'b0,ID_EX_WDSel,PC_Control,WD_ControlIn);
+Mux #(5) ControlSel (5'b0,ID_EX_Ctrl[7:3],PC_Control,EX_MEM_ControlIn);
 Register #(209) EX_MEM (clk,rst,1'b1,
-{ID_EX_Ctrl[7:3],BranchAdderOut,zf,ALU_Result,ID_EX_RegR2,ID_EX_Rd, ID_EX_WDSel, NormalAdderOut, AUIPCadderOut, LUIData,ID_EX_Func[2:0]},
+{EX_MEM_ControlIn,BranchAdderOut,zf,ALU_Result,ID_EX_RegR2,ID_EX_Rd, WD_ControlIn, NormalAdderOut, AUIPCadderOut, LUIData,ID_EX_Func[2:0]},
 {EX_MEM_Ctrl, EX_MEM_BranchAddOut, EX_MEM_Zero,
 EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_Rd,  EX_MEM_WDSel, EX_MEM_NormalAdderOut, EX_MEM_AUIPCadderOut, EX_MEM_LUIData,EX_MEM_Func3} );
 
@@ -218,9 +235,9 @@ DataMem DMem(
 WriteData_Selector SelD (MEM_WB_WDSel,MEM_WB_ALU_out,MEM_WB_Mem_out,MEM_WB_NormalAdderOut,MEM_WB_AUIPCadderOut,MEM_WB_LUIData, WriteData);
 
 assign BranchAdderOut = ShiftOut + ID_EX_PC;
-assign NormalAdderOut = (ID_EX_BSel) ? (ID_EX_PC): (ID_EX_PC +4);
+assign NormalAdderOut = (ID_EX_BSel) ? (PCOut): (PCOut+4);
 assign JalAdderOut = ID_EX_PC + ID_EX_Imm; // Jal Support
-PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,ConfirmBranch,PCIn);// JalR will get the ALU result
+PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,ID_EX_PC_sel,ConfirmBranch,PCIn);// JalR will get the ALU result
 
 
 // Hazard Detection Unit
