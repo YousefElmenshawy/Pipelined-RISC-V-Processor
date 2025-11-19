@@ -75,8 +75,11 @@ wire BreakSel;
 
 //  START OF     IF         /////////////////////////////////////
 
+Register #(32) PC (clk,rst,~stall, PCIn,PCOut);
+
+
 wire [31:0] IF_ID_PC, IF_ID_Inst;
-Register #(64) IF_ID (clk,rst,1'b1,{PCOut,Inst}
+Register #(64) IF_ID (clk,rst,~stall,{PCOut,Inst}
 ,{IF_ID_PC,IF_ID_Inst} );
 
 
@@ -98,13 +101,15 @@ RegisterFile RF  ( clk, rst, ReadAddress1,  ReadAddress2,  MEM_WB_Rd,  WriteData
 
 
 ImmGen  Gen(IF_ID_Inst, gen_out);
-Shift_Left #(32) Shift(gen_out , ShiftOut );
+
 
 ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel, BreakSel);
-
-
-Register #(160) ID_EX (clk,rst,1'b1,{RegWrite,1'b0,MemRead,MemWrite, Branch ,ALUOp,ALUSrc,IF_ID_PC,
-ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, BreakSel, WDsel, IF_ID_Inst[5]},
+wire [7:0] ControlIn;
+wire [2:0] WDselIn;
+Mux#(3) WDsel_Mux(3'b0,WDsel,stall,WDselIn);
+Mux#(8) EX_Control_Mux(8'b0,{RegWrite,1'b0,MemRead,MemWrite, Branch ,ALUOp,ALUSrc}, stall, ControlIn);
+Register #(160) ID_EX (clk,rst,1'b1,{ControlIn,IF_ID_PC,
+ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, BreakSel, WDselIn, IF_ID_Inst[5]},
 
 {ID_EX_Ctrl,ID_EX_PC,ID_EX_RegR1,ID_EX_RegR2,
 ID_EX_Imm, ID_EX_Func,ID_EX_Rs1,ID_EX_Rs2,ID_EX_Rd, ID_EX_BSel, ID_EX_WDSel, ID_EX_ShiftCheck} );
@@ -124,20 +129,50 @@ wire [4:0] EX_MEM_Rd;
 wire EX_MEM_Zero;
 wire[2:0] EX_MEM_WDSel;
 
-Mux  ALUinMux (ID_EX_Imm, ID_EX_RegR2, ID_EX_Ctrl[0], ALUin);
+Shift_Left #(32) Shift(ID_EX_Imm , ShiftOut ); //shifting for Branch
+ShifterTwelve ShiftB(ID_EX_Imm, LUIData); //shifting for LUI
 
-ALU  OurALU( ID_EX_RegR1, ALUin,shamt, ALU_Result,cf, zf, vf, sf, ALUsel);
+assign AUIPCadderOut = LUIData + ID_EX_PC; //AUIPC
+
+
+
+
+
+
+// Forwarding Unit 
+wire [1:0]  ForwardA, ForwardB;
+
+ForwardingUnit  FU (EX_MEM_Ctrl[4],EX_MEM_Rd,ID_EX_RegR1,ID_EX_RegR2, MEM_WB_Ctrl[1],MEM_WB_Rd,ForwardA,ForwardB);
+
+                    //RegWrite EX                                      //RegWrite Mem_WB
+
+
+
+Mux  ALUinMux (ID_EX_Imm, ALUin, ID_EX_Ctrl[0], ALUinB);  // Second Input ALU Second Mux 
+
+wire [31:0] ALUinA, ALUinB;
+
+Mux4 MuxA (ID_EX_RegR1, EX_MEM_ALU_out, WriteData, 32'b0, ForwardA, ALUinA);  //First Input ALU Mux
+
+Mux4 MuxB (ID_EX_RegR2, EX_MEM_ALU_out, WriteData, 32'b0, ForwardB, ALUin); // Second Input ALU second Mux
+
+
+
+
+ALU  OurALU( ALUinA, ALUinB,shamt, ALU_Result,cf, zf, vf, sf, ALUsel);
+
+
 
 ALU_ControlUnit CU(ID_EX_Ctrl[2:1], ID_EX_Func[2:0],  ID_EX_Func[3] , ALUsel);
 
 
 BranchDelegator Delg( zf, cf, sf, vf, Branch,  func3, ConfirmBranch );
 
-
-Register #(206) EX_MEM (clk,rst,1'b1,
-{ID_EX_Ctrl[7:3],BranchAdderOut,ZFlag,ALU_Result,ID_EX_RegR2,ID_EX_Rd, ID_EX_WDSel, NormalAdderOut, AUIPCadderOut, LUIData},
+wire [2:0] EX_MEM_Func3;
+Register #(209) EX_MEM (clk,rst,1'b1,
+{ID_EX_Ctrl[7:3],BranchAdderOut,zf,ALU_Result,ID_EX_RegR2,ID_EX_Rd, ID_EX_WDSel, NormalAdderOut, AUIPCadderOut, LUIData,ID_EX_Func[2:0]},
 {EX_MEM_Ctrl, EX_MEM_BranchAddOut, EX_MEM_Zero,
-EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_Rd,  EX_MEM_WDSel, EX_MEM_NormalAdderOut, EX_MEM_AUIPCadderOut, EX_MEM_LUIData} );
+EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_Rd,  EX_MEM_WDSel, EX_MEM_NormalAdderOut, EX_MEM_AUIPCadderOut, EX_MEM_LUIData,EX_MEM_Func3} );
 
 
 
@@ -158,7 +193,7 @@ Register #(170) MEM_WB (clk,rst,1'b1,
 {EX_MEM_Ctrl[4:3],DataMemOut,EX_MEM_ALU_out,EX_MEM_Rd, EX_MEM_WDSel, EX_MEM_NormalAdderOut,EX_MEM_AUIPCadderOut, EX_MEM_LUIData },
 
 {MEM_WB_Ctrl,MEM_WB_Mem_out, MEM_WB_ALU_out,
-MEM_WB_Rd, MEM_WB_WDSel,MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUIData } );
+MEM_WB_Rd, MEM_WB_WDSel,MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUIData} );
 
 
 
@@ -167,12 +202,12 @@ MEM_WB_Rd, MEM_WB_WDSel,MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUID
 wire [5:0] InstIn;
 assign InstIn = PCOut [7:2]; 
 
-Register #(32) PC (clk,rst,1'b1, PCIn,PCOut);
+
 InstMem Mem(InstIn,Inst);
 //DataMem (clk, EX_MEM_Ctrl[2], EX_MEM_Ctrl[1],EX_MEM_ALU_out[7:0], EX_MEM_RegR2,DataMemOut);
 DataMem DMem(
     .clk(clk),
-    .func3(3'b010),
+    .func3(EX_MEM_Func3),
     .MemRead(EX_MEM_Ctrl[2]),
     .MemWrite(EX_MEM_Ctrl[1]),
     .addr(EX_MEM_ALU_out[7:0]),
@@ -183,17 +218,19 @@ DataMem DMem(
 WriteData_Selector SelD (MEM_WB_WDSel,MEM_WB_ALU_out,MEM_WB_Mem_out,MEM_WB_NormalAdderOut,MEM_WB_AUIPCadderOut,MEM_WB_LUIData, WriteData);
 
 assign BranchAdderOut = ShiftOut + ID_EX_PC;
-assign NormalAdderOut = (BreakSel) ? (ID_EX_PC): (ID_EX_PC +4);
-assign JalAdderOut = ID_EX_PC + gen_out; // Jal Support
+assign NormalAdderOut = (ID_EX_BSel) ? (ID_EX_PC): (ID_EX_PC +4);
+assign JalAdderOut = ID_EX_PC + ID_EX_Imm; // Jal Support
 PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,PCsel,ConfirmBranch,PCIn);// JalR will get the ALU result
 
-//Mux MemtoRegMux (MEM_WB_Mem_out, MEM_WB_ALU_out, MEM_WB_Ctrl[0], WriteData);
+
+// Hazard Detection Unit
+
+wire stall;
+
+HazardUnit HU (ReadAddress1,ReadAddress2,ID_EX_Rd,ID_EX_Ctrl[5],stall);
 
 
-//LUI and AUIPC 
-ShifterTwelve ShiftB(gen_out, LUIData);
 
-assign AUIPCadderOut = LUIData + ID_EX_PC;
 
 
 endmodule
