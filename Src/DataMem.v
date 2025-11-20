@@ -29,9 +29,9 @@ initial begin
  end
  
 initial begin
-mem[0]=32'd17;
-mem[4]=32'd9;
-mem[8]=32'd25;
+mem[0]=8'd17;
+mem[4]=8'd9;
+mem[8]=8'd25;
 
 end
 always@ (posedge clk) begin
