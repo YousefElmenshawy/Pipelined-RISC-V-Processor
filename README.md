@@ -1,113 +1,241 @@
 # Pipelined RISC-V Processor
 
-A complete implementation of a RISC-V processor, progressing from a single-cycle architecture to a fully pipelined design.
+A complete implementation of a 5-stage pipelined 32-bit RISC-V processor supporting the RV32I base integer instruction set with comprehensive hardware hazard detection and resolution mechanisms.
 
 ## Project Overview
 
-This project implements a 32-bit RISC-V processor supporting the RV32I base integer instruction set. The development follows a milestone-based approach, starting with a fundamental single-cycle design and advancing to an optimized pipelined architecture.
+This project implements a fully pipelined RISC-V processor with hardware-based hazard handling. The processor features a classic 5-stage pipeline architecture with forwarding paths and stall logic to resolve data, control, and structural hazards efficiently.
 
-## Milestones
+## Datapath
 
-### Milestone 1: Single-Cycle Implementation ✅
+![Pipelined Datapath](./Assets/PipelinedDatapath.png)
 
-The single-cycle processor executes one instruction per clock cycle, with all stages completing sequentially within a single clock period.
+The above diagram illustrates the complete pipelined datapath showing all five pipeline stages (IF, ID, EX, MEM, WB), forwarding paths, hazard detection logic, and control signals.
 
-#### Datapath
+## Pipeline Stages
 
-![Single-Cycle Datapath](./Assets/SingleCycle_Datapath.png)
+The processor implements a classic 5-stage pipeline architecture:
 
-#### Architecture Components
+### 1. IF (Instruction Fetch)
+- **Program Counter (PC)**: Maintains current instruction address
+- **Instruction Memory**: Fetches instruction from memory based on PC
+- **IF/ID Pipeline Register**: Stores PC and fetched instruction for next stage
+- **PC Update Logic**: Increments PC or updates based on branch/jump decisions
 
-**Instruction Fetch & Decode**
-- **Program Counter (PC)**: 32-bit register maintaining current instruction address — implemented in the single-cycle top module (`SingleCycle.v`) using the flip-flop primitive (`DFlipFlop.v`).
-- **Instruction Memory**: Read-only memory storing program instructions (`InstMem.v`).
-- **Immediate Generator**: Extracts and sign-extends immediate values from instructions (`ImmGen.v`).
+### 2. ID (Instruction Decode)
+- **Register File Read**: Reads source registers (Rs1, Rs2) in parallel with decode
+- **Immediate Generator**: Extracts and sign-extends immediate values
+- **Control Unit**: Generates control signals from opcode and function fields
+- **ID/EX Pipeline Register**: Stores decoded instruction, register values, immediates, and control signals
 
-**Execution**
-- **Register File**: 32 general-purpose registers (x0-x31) (`RegisterFile.v`).
-- **Register & Register primitives**: Individual register and flip-flop modules (`Register.v`, `DFlipFlop.v`).
-- **ALU (Arithmetic Logic Unit)**: Performs arithmetic and logical operations (`ALU.v`).
-- **ALU Control Unit**: Generates ALU control signals from instruction funct fields and main control (`ALU_ControlUnit.v`).
-- **Shift Units**: Shift-left and generic shifter modules used for shift/branch computations (`Shift_Left.v`, `Shifter.v`, `ShifterTwelve.v`).
-- **Multiplexers / Selectors**: Generic mux primitives used across the datapath (`Mux.v`).
+### 3. EX (Execute)
+- **ALU**: Performs arithmetic/logic operations with forwarded or pipeline register data
+- **ALU Control Unit**: Generates specific ALU operation from control signals
+- **Branch Delegator**: Evaluates branch conditions (BEQ, BNE, BLT, BGE, BLTU, BGEU)
+- **Address Calculation**: Computes branch targets, AUIPC results, and LUI operations
+- **EX/MEM Pipeline Register**: Stores ALU results, branch decisions, and memory control signals
 
-**Memory Access**
-- **Data Memory**: Read/write memory for load/store operations (`DataMem.v`).
-- **Branch Delegator**: Evaluates branch conditions (BEQ, BNE, BLT, BGE, BLTU, BGEU) (`BranchDelegator.v`).
+### 4. MEM (Memory Access)
+- **Unified Memory**: Handles both instruction fetch and data memory access (single-ported)
+- **Load Operations**: Reads data from memory (LW, LH, LHU, LB, LBU)
+- **Store Operations**: Writes data to memory (SW, SH, SB)
+- **MEM/WB Pipeline Register**: Stores memory read data and ALU results for write-back
 
-**Write Back / Control**
-- **Write Data Selector**: Multiplexes between ALU result, memory data, PC+4, AUIPC result, and LUI data (`WriteData_Selector.v`).
-- **Control Unit**: Main control logic producing control signals from opcode/func (`ControlUnit.v`).
-- **PC Selector**: Next-PC multiplexer handling branch/jump selection (`PC_Selector.v`).
+### 5. WB (Write Back)
+- **Write Data Selector**: Multiplexes between ALU result, memory data, PC+4, AUIPC result, and LUI data
+- **Register File Write**: Writes selected data back to destination register
 
-#### Control Signals
+---
 
-| Signal       | Description                                     |
-|--------------|-------------------------------------------------|
-| `Branch`     | Enables conditional branching                   |
-| `MemRead`    | Enables data memory read                        |
-| `MemWrite`   | Enables data memory write                       |
-| `ALUSrc`     | Selects between register or immediate for ALU   |
-| `RegWrite`   | Enables register file write                     |
-| `ALUOp[1:0]` | Determines ALU operation category               |
-| `PCsel[1:0]` | Selects next PC value (PC+4, branch, JAL, JALR) |
-| `WDsel[2:0]` | Selects write-back data source                  |
-| `BreakSel`   | Selects Mux of PC +4 OR PC +0 in case of SYS    |
+## Hazard Handling
 
-#### Supported Instructions
+The pipelined processor implements three types of hazard resolution mechanisms to maintain correct program execution while maximizing throughput.
+
+### 1. Data Hazards (RAW - Read After Write)
+
+**Problem**: A data hazard occurs when an instruction depends on the result of a previous instruction that hasn't completed yet.
+
+**Example**:
+```assembly
+add x3, x2, x1   # x3 is computed in EX, available in EX/MEM
+add x5, x3, x6   # x3 needed in EX stage - hazard!
+```
+
+**Solution: Forwarding Unit**
+
+The Forwarding Unit (`ForwardingUnit.v`) detects and resolves RAW hazards by bypassing data from later pipeline stages directly to the ALU inputs, eliminating the need to wait for write-back.
+
+**Implementation Details**:
+- **Monitors**: Compares source registers (ID/EX Rs1, Rs2) against destination registers in later stages (EX/MEM Rd, MEM/WB Rd)
+- **Forward from EX/MEM** (Priority 1): When EX/MEM stage has the required data
+  - Condition: `EX_MEM_RegWrite && (EX_MEM_Rd != 0) && (EX_MEM_Rd == ID_EX_Rs1/Rs2)`
+  - Action: Forward ALU result from EX/MEM register (`ForwardA/B = 2'b10`)
+- **Forward from MEM/WB** (Priority 2): When MEM/WB stage has the required data
+  - Condition: `MEM_WB_RegWrite && (MEM_WB_Rd != 0) && (MEM_WB_Rd == ID_EX_Rs1/Rs2)`
+  - Action: Forward write-back data from MEM/WB register (`ForwardA/B = 2'b01`)
+- **No Forwarding**: When no hazard detected (`ForwardA/B = 2'b00`)
+
+**Forwarding Paths**:
+```
+EX/MEM.ALU_Result ──→ Mux4 (MuxA/MuxB) ──→ ALU Input
+MEM/WB.WriteData  ──→ Mux4 (MuxA/MuxB) ──→ ALU Input
+```
+
+**Benefits**: Resolves most data hazards with zero stall cycles, maintaining pipeline throughput.
+
+---
+
+### 2. Load-Use Hazards
+
+**Problem**: A special case of data hazard where a load instruction is immediately followed by an instruction using the loaded data. The load data is not available until after the MEM stage, but the dependent instruction needs it in the EX stage—forwarding alone cannot resolve this.
+
+**Example**:
+```assembly
+lw  x3, 0(x1)    # x3 available after MEM stage
+add x5, x3, x6   # x3 needed in EX stage (one cycle too early!)
+```
+
+**Solution: Hazard Detection Unit - Load-Use Stall**
+
+The Hazard Unit (`HazardUnit.v`) detects load-use hazards and stalls the pipeline for **one cycle** to allow the load data to become available for forwarding.
+
+**Implementation Details**:
+- **Detection Logic**:
+  ```verilog
+  if (((IF_ID_RS1 == ID_EX_Rd) || (IF_ID_RS2 == ID_EX_Rd)) 
+      && ID_EX_MemRead 
+      && (ID_EX_Rd != 0))
+      stall = 1'b1;
+  ```
+- **Stall Actions**:
+  - **Freeze PC**: Prevents fetching new instruction (`Register PC` enable = `~stall`)
+  - **Freeze IF/ID**: Holds current instruction in decode stage (`IF/ID` enable = `~stall`)
+  - **Insert Bubble**: Flushes ID/EX register with NOP control signals (via `Control_Mux`)
+
+**Stall Cycle Behavior**:
+1. **Cycle N**: Load instruction in EX, dependent instruction in ID
+2. **Cycle N+1 (Stall)**: Load moves to MEM, bubble inserted in EX, dependent instruction held in ID
+3. **Cycle N+2**: Load in WB, dependent instruction in EX with forwarding from MEM/WB
+
+**Benefits**: Resolves load-use hazards with minimal penalty (1 cycle stall), then forwarding handles remaining dependency.
+
+---
+
+### 3. Structural Hazards (Memory Port Conflicts)
+
+**Problem**: The processor uses a single-ported memory shared between instruction fetch (IF stage) and data access (MEM stage). When a memory operation (load/store) occurs in the MEM stage while IF stage attempts to fetch an instruction, a structural conflict arises.
+
+**Example**:
+```
+Cycle N: 
+  - IF stage: Fetching instruction at address 0x100
+  - MEM stage: Load/Store accessing data memory (CONFLICT!)
+```
+
+**Solution: Hazard Detection Unit - Fetch Stall**
+
+The Hazard Unit detects memory conflicts and temporarily stalls instruction fetching for **one cycle** to prioritize data memory access over instruction fetch.
+
+**Implementation Details**:
+- **Detection Logic**:
+  ```verilog
+  if (EX_MEM_MemRead || EX_MEM_MemWrite)
+      fetchstall = 1'b1;
+  ```
+- **Memory Arbitration** (`Memory.v`):
+  ```verilog
+  MemAddr = (EX_MEM_MemRead | EX_MEM_MemWrite) ? 
+            EX_MEM_ALU_out[7:0] :    // Data memory address
+            PCOut[7:0];              // Instruction fetch address
+  ```
+
+**Stall Actions**:
+- **Freeze PC**: Holds current PC value (`Register PC` enable = `~fetchstall`)
+- **Freeze IF/ID**: Prevents corrupted instruction from entering pipeline (`IF/ID` enable = `~fetchstall`)
+- **Prioritize Data Access**: Memory serves data request from MEM stage
+
+**Fetch Stall Behavior**:
+1. **Cycle N**: Memory instruction in MEM stage, IF attempts fetch
+2. **Cycle N (Stall)**: Memory serves data request, PC and IF/ID frozen
+3. **Cycle N+1**: Memory instruction completes, IF resumes normal fetch
+
+**Benefits**: Ensures memory consistency with single-ported memory while minimizing performance impact (1 cycle stall per memory operation).
+
+---
+
+### Hazard Resolution Summary
+
+| Hazard Type | Detection Unit | Resolution Mechanism | Stall Cycles | Implementation |
+|-------------|---------------|---------------------|--------------|----------------|
+| **Data (RAW)** | Forwarding Unit | Data bypassing from EX/MEM or MEM/WB | 0 | `ForwardingUnit.v` + `Mux4` |
+| **Load-Use** | Hazard Unit | Pipeline stall + forwarding | 1 | `HazardUnit.v` (`stall` signal) |
+| **Structural (Memory)** | Hazard Unit | Fetch stall + memory arbitration | 1 | `HazardUnit.v` (`fetchstall` signal) |
+
+---
+
+## Architecture Components
+
+### Pipeline Registers
+- **IF/ID**: Stores PC and fetched instruction (64-bit)
+- **ID/EX**: Stores control signals, PC, register values, immediate, function codes, and register addresses (162-bit)
+- **EX/MEM**: Stores control signals, ALU result, branch target, memory data, and write-back data (209-bit)
+- **MEM/WB**: Stores control signals, memory output, ALU result, and write-back data (170-bit)
+
+### Control & Hazard Units
+- **Control Unit** (`ControlUnit.v`): Generates control signals from opcode
+- **Hazard Detection Unit** (`HazardUnit.v`): Detects load-use and structural hazards, generates stall signals
+- **Forwarding Unit** (`ForwardingUnit.v`): Detects data dependencies and controls forwarding paths
+
+### Execution Units
+- **Register File** (`RegisterFile.v`): 32 general-purpose registers (x0-x31), dual-read single-write ports
+- **ALU** (`ALU.v`): Arithmetic and logic operations with flag generation (Carry, Zero, Overflow, Sign)
+- **ALU Control Unit** (`ALU_ControlUnit.v`): Generates specific ALU operation from control signals
+- **Branch Delegator** (`BranchDelegator.v`): Evaluates branch conditions based on flags
+
+### Memory
+- **Unified Memory** (`Memory.v`): Single-ported memory serving both instruction fetch and data access
+- **Memory Arbitration**: Prioritizes data memory access (MEM stage) over instruction fetch (IF stage)
+
+### Data Path Components
+- **Immediate Generator** (`ImmGen.v`): Extracts and sign-extends immediates for all instruction formats
+- **Shifters** (`Shifter.v`, `Shift_Left.v`, `ShifterTwelve.v`): Handle shift operations and immediate shifts
+- **Multiplexers** (`Mux.v`, `Mux4.v`): Data path selection including forwarding muxes
+- **PC Selector** (`PC_Selector.v`): Selects next PC (PC+4, branch target, JAL, JALR)
+- **Write Data Selector** (`WriteData_Selector.v`): Selects write-back source
+
+---
+
+## Supported Instructions
 
 **R-Type**: ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU  
-**I-Type**: ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU, LW,LHW,LHWU,LB,LBU, JALR  
-**S-Type**: SW, SH, SB 
+**I-Type**: ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU, LW, LH, LHU, LB, LBU, JALR  
+**S-Type**: SW, SH, SB  
 **B-Type**: BEQ, BNE, BLT, BGE, BLTU, BGEU  
 **U-Type**: LUI, AUIPC  
-**J-Type**: JAL
-**SYS-type**: ECALL, EBREAK, PAUSE, FENCE, FENCE.tso
+**J-Type**: JAL  
+**SYS-Type**: ECALL, EBREAK, PAUSE, FENCE, FENCE.TSO
 
-> Note: The supported instruction set is implemented across the control unit, ALU, register file, and memory modules listed above (see `Src/` files).
+---
 
-#### Key Features
+## Control Signals
 
-- Full RV32I base instruction set support
-- Unified ALU with flag generation (Carry, Zero, Overflow, Sign)
-- Flexible immediate handling for all instruction formats
-- Comprehensive branch condition evaluation
-- Multiple write-back data sources
+| Signal | Width | Description |
+|--------|-------|-------------|
+| `Branch` | 1-bit | Enables conditional branching |
+| `MemRead` | 1-bit | Enables data memory read |
+| `MemWrite` | 1-bit | Enables data memory write |
+| `ALUSrc` | 1-bit | Selects between register or immediate for ALU |
+| `RegWrite` | 1-bit | Enables register file write |
+| `ALUOp[1:0]` | 2-bit | Determines ALU operation category |
+| `PCsel[1:0]` | 2-bit | Selects next PC value (PC+4, branch, JAL, JALR) |
+| `WDsel[2:0]` | 3-bit | Selects write-back data source |
+| `BreakSel` | 1-bit | Handles EBREAK/ECALL PC behavior |
+| `ForwardA[1:0]` | 2-bit | Controls ALU input A forwarding |
+| `ForwardB[1:0]` | 2-bit | Controls ALU input B forwarding |
+| `stall` | 1-bit | Stalls pipeline for load-use hazard |
+| `fetchstall` | 1-bit | Stalls fetch for memory structural hazard |
 
-#### Module Hierarchy
-
-```
-SingleCycle (Top Module - SingleCycle.v)
-├── InstMem.v (Instruction Memory)
-├── ControlUnit.v (Main Control Unit)
-├── ImmGen.v (Immediate Generator)
-├── RegisterFile.v (Register file / 32 registers)
-├── Register.v (Register primitive)
-├── DFlipFlop.v (Flip-flop primitive)
-├── ALU.v (Arithmetic Logic Unit)
-├── ALU_ControlUnit.v (ALU Control)
-├── Shift_Left.v (Shift-left unit)
-├── Shifter.v (Shifter / shift operations)
-├── ShifterTwelve.v (Shifter helper / small shifts)
-├── Mux.v (Multiplexers)
-├── DataMem.v (Data Memory)
-├── BranchDelegator.v (Branch Logic)
-├── PC_Selector.v (Next PC multiplexer)
-└── WriteData_Selector.v (Write-back multiplexer)
-```
-
-### Milestone 2: Pipelined Implementation 🚧
-
-*Coming Soon*
-
-The pipelined implementation will introduce five pipeline stages with hazard detection and forwarding mechanisms for improved throughput.
-
-#### Planned Pipeline Stages
-1. **IF (Instruction Fetch)**
-2. **ID (Instruction Decode)**
-3. **EX (Execute)**
-4. **MEM (Memory Access)**
-5. **WB (Write Back)**
+---
 
 ## Project Structure
 
@@ -115,92 +243,100 @@ The pipelined implementation will introduce five pipeline stages with hazard det
 Pipelined-RISC-V-Processor/
 ├── README.md
 ├── Assets/
-│   └── SingleCycle_Datapath.png
+│   ├── FullPipelined.drawio
+│   └── PipelinedDatapath.png
 ├── Src/
-│   ├── ALU.v
-│   ├── ALU_ControlUnit.v
-│   ├── BranchDelegator.v
-│   ├── ControlUnit.v
-│   ├── DataMem.v
-│   ├── defines.v
-│   ├── DFlipFlop.v
-│   ├── ImmGen.v
-│   ├── InstMem.v
-│   ├── Mux.v
-│   ├── PC_Selector.v
-│   ├── Register.v
-│   ├── RegisterFile.v
-│   ├── Shifter.v
-│   ├── ShifterTwelve.v
-│   ├── Shift_Left.v
-│   ├── SingleCycle.v
-│   └── WriteData_Selector.v
+│   ├── Pipelined.v               # Top-level pipelined processor module
+│   ├── ALU.v                     # Arithmetic Logic Unit
+│   ├── ALU_ControlUnit.v         # ALU control signal generator
+│   ├── BranchDelegator.v         # Branch condition evaluator
+│   ├── ControlUnit.v             # Main control unit
+│   ├── ForwardingUnit.v          # Data forwarding logic
+│   ├── HazardUnit.v              # Hazard detection and stall logic
+│   ├── ImmGen.v                  # Immediate generator
+│   ├── Memory.v                  # Unified instruction/data memory
+│   ├── Mux.v                     # 2-to-1 multiplexer
+│   ├── Mux4.v                    # 4-to-1 multiplexer (forwarding)
+│   ├── PC_Selector.v             # Next PC selector
+│   ├── Register.v                # Generic register module
+│   ├── RegisterFile.v            # 32-register register file
+│   ├── DFlipFlop.v               # D flip-flop primitive
+│   ├── Shifter.v                 # Barrel shifter
+│   ├── Shift_Left.v              # Left shift unit
+│   ├── ShifterTwelve.v           # 12-bit left shifter (LUI)
+│   ├── WriteData_Selector.v      # Write-back data selector
+│   └── defines.v                 # Common definitions
 ├── TB/
-│   └── Program_tb.v
-├── RV32I_TestGen/
-│   ├── CMakeLists.txt
-│   ├── Generator.cpp
-│   ├── Generator.h
-│   └── main.cpp
-│   ├── TestCases/
-│   │   ├── TC_R/
-│   │   ├── TC_I/
-│   │   ├── TC_S/
-│   │   ├── TC_U/
-│   │   ├── TC_B/
-│   │   └── TC_J/
-│   └── MemData/
-│       ├── Mem_R/
-│       ├── Mem_I/
-│       ├── Mem_S/
-│       ├── Mem_U/
-│       ├── Mem_B/
-│       └── Mem_J/
-└── Assets/
-    └── SingleCycle_Datapath.png
+│   └── Program_tb.v              # Testbench
+└── RV32I_TestGen/
+    ├── CMakeLists.txt
+    ├── Generator.cpp
+    ├── Generator.h
+    ├── main.cpp
+    ├── README.md
+    ├── TestCases/
+    │   ├── TC_R.txt
+    │   ├── TC_I.txt
+    │   ├── TC_S.txt
+    │   ├── TC_U.txt
+    │   ├── TC_B.txt
+    │   ├── TC_Jal.txt
+    │   ├── TC_Shifting.txt
+    │   └── TC_Sum1to5.txt
+    └── MemData/
+        ├── Mem_R.txt
+        ├── Mem_I.txt
+        ├── Mem_S.txt
+        ├── Mem_U.txt
+        ├── Mem_B.txt
+        ├── Mem_Jal.txt
+        └── Mem_Sum1to5.txt
 ```
 
 ## Getting Started
 
 ### Prerequisites
 - Xilinx Vivado (or compatible Verilog simulator)
-- Basic understanding of RISC-V ISA
-- Familiarity with digital design concepts
+- Basic understanding of RISC-V ISA and pipelining
+- Familiarity with hazards and forwarding concepts
 
 ### Running the Design
 
 1. Clone the repository
 2. Open the project in Vivado
-3. Add source files to your project
-4. Run behavioral simulation or synthesize for FPGA deployment
+3. Add source files from `Src/` directory
+4. Run behavioral simulation with test programs from `TB/`
 
 ## Design Specifications
 
 - **Data Width**: 32 bits
 - **Architecture**: RISC-V RV32I
+- **Pipeline Stages**: 5 (IF, ID, EX, MEM, WB)
+- **Hazard Handling**: Hardware forwarding and stalling
+- **Memory**: Single-ported (instruction and data shared)
 - **Clock**: Single clock domain
 - **Reset**: Synchronous active-high reset
-- **Memory**: Separate instruction and data memories
-- **Addressing**: Word-aligned (addresses divided by 4)
 
 ## Testing
 
 The processor has been verified with various test programs including:
-- Arithmetic operations
+- Arithmetic operations (R-type)
 - Logical operations
-- Load/Store instructions
+- Load/Store instructions with hazard handling
 - Branch conditions
 - Jump instructions (JAL/JALR)
 - Upper immediate instructions (LUI/AUIPC)
+- Data forwarding scenarios
+- Load-use hazard cases
+- Memory structural hazard scenarios
 
 ## Future Enhancements
 
-- [ ] Complete pipelined implementation
-- [ ] Hazard detection unit
-- [ ] Data forwarding unit
-- [ ] Branch prediction
-- [ ] Cache implementation
-- [ ] Extended instruction set support (M, A, F, D extensions)
+- [ ] Branch prediction unit
+- [ ] Cache implementation (I-cache and D-cache)
+- [ ] Multi-ported memory
+- [ ] Extended instruction sets (M, A, F, D extensions)
+- [ ] Performance counters
 
 ## License
 
@@ -211,6 +347,3 @@ This project is developed for educational purposes.
 - *Yousef Elmenshawy*
 - *Kareem Rashed*
 
----
-
-**Note**: This is an ongoing educational project. Milestone 2 (pipelined implementation) is under development.
