@@ -27,7 +27,7 @@ integer i;
 assign ReadData1 = RegFile[ReadAddress1];
 assign ReadData2 = RegFile[ReadAddress2];
 
-always @(negedge clk or posedge rst) begin
+always @(posedge clk or posedge rst) begin
     if (rst) begin
         for (i = 0; i < 32; i = i + 1)
             RegFile[i] <= 0;

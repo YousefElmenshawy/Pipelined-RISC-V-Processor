@@ -62,7 +62,7 @@ wire BreakSel;
 
 //  START OF     IF         /////////////////////////////////////
 
-Register #(32) PC (clk,rst,~stall&~BreakSel, PCIn,PCOut);
+Register #(32) PC (clk,rst,~stall&~BreakSel&~fetchstall, PCIn,PCOut);
 
 
 wire [63:0] PC_and_Inst_In;
@@ -73,7 +73,7 @@ wire [63:0] PC_and_Inst_In;
 Mux#(64) Control_ID_Mux ({32'b0,32'h000_00033},{PCOut,MemOut},ConfirmBranch, PC_and_Inst_In);
 
 wire [31:0] IF_ID_PC, IF_ID_Inst;
-Register #(64) IF_ID (clk,rst,~stall&~BreakSel,PC_and_Inst_In
+Register #(64) IF_ID (clk,rst,~stall&~BreakSel&~fetchstall,PC_and_Inst_In
 ,{IF_ID_PC,IF_ID_Inst} );
 
 
@@ -105,7 +105,7 @@ wire [3:0] ID_EX_Func;
 wire [4:0] ID_EX_Rs1, ID_EX_Rs2, ID_EX_Rd;
 
 
-RegisterFile RF  ( clk, rst, ReadAddress1,  ReadAddress2,  MEM_WB_Rd,  WriteData,  MEM_WB_Ctrl[1], ReadData1,  ReadData2);   // RF
+RegisterFile RF  ( ~clk, rst, ReadAddress1,  ReadAddress2,  MEM_WB_Rd,  WriteData,  MEM_WB_Ctrl[1], ReadData1,  ReadData2);   // RF
 
 
 ImmGen  Gen(IF_ID_Inst, gen_out);
@@ -213,13 +213,11 @@ MEM_WB_Rd, MEM_WB_WDSel,MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUID
 //assign InstIn = PCOut [7:2]; 
 wire [7:0] MemAddr;
 
-assign  MemAddr = (EX_MEM_Ctrl[2]|EX_MEM_Ctrl[1])? (EX_MEM_ALU_out[7:0]):(PCOut);
+assign  MemAddr = (EX_MEM_Ctrl[2]|EX_MEM_Ctrl[1])? (EX_MEM_ALU_out[7:0]):(PCOut[7:0]);
 
 wire [31:0] MemOut;
 
-//InstMem MemI(InstIn,Inst);
-//module Memory(input clk,input [2:0] func3, input MemRead, input MemWrite,
-//input [7:0] addr, input [31:0] data_in, output  [31:0] Mem_out);
+
 Memory Mem(.clk(clk),
             .func3(EX_MEM_Func3),
             .MemRead(EX_MEM_Ctrl[2]),
@@ -229,15 +227,6 @@ Memory Mem(.clk(clk),
             .Mem_out(MemOut)
             );
             
-//DataMem DMem(
-//    .clk(clk),
-//    .func3(EX_MEM_Func3),
-//    .MemRead(EX_MEM_Ctrl[2]),
-//    .MemWrite(EX_MEM_Ctrl[1]),
-//    .addr(EX_MEM_ALU_out[7:0]),
-//    .data_in(EX_MEM_RegR2),
-//    .data_out(DataMemOut)
-//    );
 
 WriteData_Selector SelD (MEM_WB_WDSel,MEM_WB_ALU_out,MEM_WB_Mem_out,MEM_WB_NormalAdderOut,MEM_WB_AUIPCadderOut,MEM_WB_LUIData, WriteData);
 
@@ -249,9 +238,9 @@ PC_Selector Sel (BranchAdderOut,NormalAdderOut,JalAdderOut,ALU_Result,ID_EX_PC_s
 
 // Hazard Detection Unit
 
-wire stall;
+wire stall,fetchstall; // for stalling the Fetch stage in case of MEM access 
 
-HazardUnit HU (ReadAddress1,ReadAddress2,ID_EX_Rd,ID_EX_Ctrl[5],stall);
+HazardUnit HU (ReadAddress1,ReadAddress2,ID_EX_Rd,ID_EX_Ctrl[5],EX_MEM_Ctrl[2],EX_MEM_Ctrl[1],stall,fetchstall);
 
 
 
