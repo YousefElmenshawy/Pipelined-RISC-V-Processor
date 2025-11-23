@@ -151,7 +151,7 @@ The Hazard Unit detects memory conflicts and temporarily stalls instruction fetc
 
 **Stall Actions**:
 - **Freeze PC**: Holds current PC value (`Register PC` enable = `~fetchstall`)
-- **Freeze IF/ID**: Prevents corrupted instruction from entering pipeline (`IF/ID` enable = `~fetchstall`)
+- **Flush IF/ID**: Prevents corrupted instruction from entering pipeline (`IF/ID`  = `NOP`)
 - **Prioritize Data Access**: Memory serves data request from MEM stage
 
 **Fetch Stall Behavior**:
@@ -337,6 +337,8 @@ The processor has been verified with various test programs including:
 - [ ] Multi-ported memory
 - [ ] Extended instruction sets (M, A, F, D extensions)
 - [ ] Performance counters
+- [ ] Cache implementation
+- [ ] Extended instruction set support (M, A, F, D extensions)
 
 ## License
 
@@ -346,4 +348,6 @@ This project is developed for educational purposes.
 
 - *Yousef Elmenshawy*
 - *Kareem Rashed*
+
+---
 

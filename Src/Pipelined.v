@@ -18,7 +18,7 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
+`include "defines.v" 
 
 module Pipelined(input clk,rst );
 wire [31:0] PCIn;
@@ -58,12 +58,19 @@ wire [31:0] LUIData;
 wire ConfirmBranch;
 wire BreakSel;
 wire Jump;
+wire PCen;
+
+
+// setting PC Limit to not go through Data 
+assign PCen =  (PCIn>`PC_Limit)?(1'b0):(1'b1);
+
+
 
 
 
 //  START OF     IF         /////////////////////////////////////
 
-Register #(32) PC (clk,rst,~stall&~BreakSel&~fetchstall, PCIn,PCOut);
+Register #(32) PC (clk,rst,~stall&~BreakSel&~fetchstall&PCen, PCIn,PCOut);
 
 
 wire [63:0] PC_and_Inst_In;

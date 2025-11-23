@@ -53,3 +53,4 @@
 
 `define     SYS_EC_EB       3'b000
 
+`define     PC_Limit        32'd252

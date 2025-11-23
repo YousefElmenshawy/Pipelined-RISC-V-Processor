@@ -37,46 +37,69 @@ reg [31:0] data_out;
 
  
 initial begin
-//Data
-mem[256]=8'd17;
-mem[257] = 8'd6;
-mem[260]=8'd9;
-mem[264] = 8'h00 ; 
-mem[265] = 8'hFF;  // byte = 255 unsigned, -1 signed
-mem[266] = 8'h7F ; // second byte for halfword ? 0x7FFF = 32767
-mem[267] = 8'h80;  // optional extra byte
+////Data
+//mem[256]=8'd17;
+//mem[257] = 8'd6;
+//mem[260]=8'd9;
+//mem[264] = 8'h00 ; 
+//mem[265] = 8'hFF;  // byte = 255 unsigned, -1 signed
+//mem[266] = 8'h7F ; // second byte for halfword ? 0x7FFF = 32767
+//mem[267] = 8'h80;  // optional extra byte
 
 
-// Instructions
-//x2 = 0
-mem[0] = 8'b10000011; // lb x1, 0(x2) [byte 1]  //x1 = 17
-mem[1] = 8'b00000000; //  [byte 2]
-mem[2] = 8'b00000001; //  [byte 3]
-mem[3] = 8'b00000000; //  [byte 4]    
-mem[4] = 8'b10000011; // lh x1, 0(x2) [byte 1] // x1 = 1554
-mem[5] = 8'b00010000; //  [byte 2]
-mem[6] = 8'b00000001; //  [byte 3]
-mem[7] = 8'b00000000; //  [byte 4]
-mem[8] = 8'b10000011; // lw x1, 4(x2) [byte 1] x1 = 9
-mem[9] = 8'b00100000; //  [byte 2]
-mem[10] = 8'b01000001; //  [byte 3]
+//// Instructions
+////x2 = 0
+//mem[0] = 8'b10000011; // lb x1, 0(x2) [byte 1]  //x1 = 17
+//mem[1] = 8'b00000000; //  [byte 2]
+//mem[2] = 8'b00000001; //  [byte 3]
+//mem[3] = 8'b00000000; //  [byte 4]    
+//mem[4] = 8'b10000011; // lh x1, 0(x2) [byte 1] // x1 = 1554
+//mem[5] = 8'b00010000; //  [byte 2]
+//mem[6] = 8'b00000001; //  [byte 3]
+//mem[7] = 8'b00000000; //  [byte 4]
+//mem[8] = 8'b10000011; // lw x1, 4(x2) [byte 1] x1 = 9
+//mem[9] = 8'b00100000; //  [byte 2]
+//mem[10] = 8'b01000001; //  [byte 3]
+//mem[11] = 8'b00000000; //  [byte 4]
+//mem[12] = 8'b10000011; // lbu x1, 9(x2) [byte 1] // x1 = 255
+//mem[13] = 8'b01000000; //  [byte 2]
+//mem[14] = 8'b10010001; //  [byte 3]
+//mem[15] = 8'b00000000; //  [byte 4]
+//mem[16] = 8'b10000011; // lhu x1, 9(x2) [byte 1] x1 = 32767
+//mem[17] = 8'b01010000; //  [byte 2]
+//mem[18] = 8'b10010001; //  [byte 3]
+//mem[19] = 8'b00000000; //  [byte 4]
+
+
+//mem[20] = 8'h73;        //0x00000073
+//mem[21] = 8'h00;
+//mem[22] = 8'h00;
+//mem[23] = 8'h00;
+
+mem[0] = 8'b00010011; // addi x2, x0, 575 [byte 1]
+mem[1] = 8'b00000001; //  [byte 2]
+mem[2] = 8'b11110000; //  [byte 3]
+mem[3] = 8'b00100011; //  [byte 4]
+mem[4] = 8'b10010011; // addi x3, x0, 258 [byte 1]
+mem[5] = 8'b00000001; //  [byte 2]
+mem[6] = 8'b00100000; //  [byte 3]
+mem[7] = 8'b00010000; //  [byte 4]
+mem[8] = 8'b00100011; // sb x2, 4(x1) [byte 1]
+mem[9] = 8'b10000010; //  [byte 2]
+mem[10] = 8'b00100000; //  [byte 3]
 mem[11] = 8'b00000000; //  [byte 4]
-mem[12] = 8'b10000011; // lbu x1, 9(x2) [byte 1] // x1 = 255
-mem[13] = 8'b01000000; //  [byte 2]
-mem[14] = 8'b10010001; //  [byte 3]
+mem[12] = 8'b00100011; // sh x2, 4(x1) [byte 1]
+mem[13] = 8'b10010010; //  [byte 2]
+mem[14] = 8'b00100000; //  [byte 3]
 mem[15] = 8'b00000000; //  [byte 4]
-mem[16] = 8'b10000011; // lhu x1, 9(x2) [byte 1] x1 = 32767
-mem[17] = 8'b01010000; //  [byte 2]
-mem[18] = 8'b10010001; //  [byte 3]
+mem[16] = 8'b00100011; // sw x2, 4(x1) [byte 1]
+mem[17] = 8'b10100010; //  [byte 2]
+mem[18] = 8'b00100000; //  [byte 3]
 mem[19] = 8'b00000000; //  [byte 4]
-
-
-mem[20] = 8'h73;        //0x00000073
+mem[20] = 8'h73;
 mem[21] = 8'h00;
 mem[22] = 8'h00;
 mem[23] = 8'h00;
-
-
 
 end
 always@ (posedge clk) begin
