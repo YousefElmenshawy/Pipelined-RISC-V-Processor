@@ -38,65 +38,43 @@ reg [31:0] data_out;
  
 initial begin
 //Data
-
-/*
 mem[256]=8'd17;
+mem[257] = 8'd6;
 mem[260]=8'd9;
-mem[264]=8'd25;
+mem[264] = 8'h00 ; 
+mem[265] = 8'hFF;  // byte = 255 unsigned, -1 signed
+mem[266] = 8'h7F ; // second byte for halfword ? 0x7FFF = 32767
+mem[267] = 8'h80;  // optional extra byte
 
-*/
-mem[0] = 8'b00010011; // addi x2, x0, 2 [byte 1]
-mem[1] = 8'b00000001; //  [byte 2]
-mem[2] = 8'b00100000; //  [byte 3]
-mem[3] = 8'b00000000; //  [byte 4]
-mem[4] = 8'b10010011; // addi x3, x0, 3 [byte 1]
-mem[5] = 8'b00000001; //  [byte 2]
-mem[6] = 8'b00110000; //  [byte 3]
+
+// Instructions
+//x2 = 0
+mem[0] = 8'b10000011; // lb x1, 0(x2) [byte 1]  //x1 = 17
+mem[1] = 8'b00000000; //  [byte 2]
+mem[2] = 8'b00000001; //  [byte 3]
+mem[3] = 8'b00000000; //  [byte 4]    
+mem[4] = 8'b10000011; // lh x1, 0(x2) [byte 1] // x1 = 1554
+mem[5] = 8'b00010000; //  [byte 2]
+mem[6] = 8'b00000001; //  [byte 3]
 mem[7] = 8'b00000000; //  [byte 4]
-mem[8] = 8'b10110011; // add x1, x2, x3 [byte 1]
-mem[9] = 8'b00000000; //  [byte 2]
-mem[10] = 8'b00110001; //  [byte 3]
+mem[8] = 8'b10000011; // lw x1, 4(x2) [byte 1] x1 = 9
+mem[9] = 8'b00100000; //  [byte 2]
+mem[10] = 8'b01000001; //  [byte 3]
 mem[11] = 8'b00000000; //  [byte 4]
-mem[12] = 8'b10110011; // sub x1, x2, x3 [byte 1]
-mem[13] = 8'b00000000; //  [byte 2]
-mem[14] = 8'b00110001; //  [byte 3]
-mem[15] = 8'b01000000; //  [byte 4]
-mem[16] = 8'b10110011; // sll x1, x2, x3 [byte 1]
-mem[17] = 8'b00010000; //  [byte 2]
-mem[18] = 8'b00110001; //  [byte 3]
+mem[12] = 8'b10000011; // lbu x1, 9(x2) [byte 1] // x1 = 255
+mem[13] = 8'b01000000; //  [byte 2]
+mem[14] = 8'b10010001; //  [byte 3]
+mem[15] = 8'b00000000; //  [byte 4]
+mem[16] = 8'b10000011; // lhu x1, 9(x2) [byte 1] x1 = 32767
+mem[17] = 8'b01010000; //  [byte 2]
+mem[18] = 8'b10010001; //  [byte 3]
 mem[19] = 8'b00000000; //  [byte 4]
-mem[20] = 8'b10110011; // slt x1, x2, x3 [byte 1]
-mem[21] = 8'b00100000; //  [byte 2]
-mem[22] = 8'b00110001; //  [byte 3]
-mem[23] = 8'b00000000; //  [byte 4]
-mem[24] = 8'b10110011; // sltu x1, x2, x3 [byte 1]
-mem[25] = 8'b00110000; //  [byte 2]
-mem[26] = 8'b00110001; //  [byte 3]
-mem[27] = 8'b00000000; //  [byte 4]
-mem[28] = 8'b10110011; // xor x1, x2, x3 [byte 1]
-mem[29] = 8'b01000000; //  [byte 2]
-mem[30] = 8'b00110001; //  [byte 3]
-mem[31] = 8'b00000000; //  [byte 4]
-mem[32] = 8'b10110011; // srl x1, x2, x3 [byte 1]
-mem[33] = 8'b01010000; //  [byte 2]
-mem[34] = 8'b00110001; //  [byte 3]
-mem[35] = 8'b00000000; //  [byte 4]
-mem[36] = 8'b10110011; // sra x1, x2, x3 [byte 1]
-mem[37] = 8'b01010000; //  [byte 2]
-mem[38] = 8'b00110001; //  [byte 3]
-mem[39] = 8'b01000000; //  [byte 4]
-mem[40] = 8'b10110011; // or x1, x2, x3 [byte 1]
-mem[41] = 8'b01100000; //  [byte 2]
-mem[42] = 8'b00110001; //  [byte 3]
-mem[43] = 8'b00000000; //  [byte 4]
-mem[44] = 8'b10110011; // and x1, x2, x3 [byte 1]
-mem[45] = 8'b01110000; //  [byte 2]
-mem[46] = 8'b00110001; //  [byte 3]
-mem[47] = 8'b00000000; //  [byte 4]
-mem[48] = 8'b00001111; // FENCE.TSO [byte 1]
-mem[49] = 8'b00000000; //  [byte 2]
-mem[50] = 8'b00110000; //  [byte 3]
-mem[51] = 8'b10000011; //  [byte 4]
+
+
+mem[20] = 8'h73;        //0x00000073
+mem[21] = 8'h00;
+mem[22] = 8'h00;
+mem[23] = 8'h00;
 
 
 
@@ -113,7 +91,7 @@ always@ (*) begin
 if(MemRead)
 case(func3)
  3'b000: data_out = {{ 24{mem[addr+256][7]}} ,mem[addr+256]};      //lb
- 3'b001: data_out = {{16{mem[addr+256][7]}}, mem[addr+256], mem[addr+256]};           //lhw
+ 3'b001: data_out = {{16{mem[addr+256+1][7]}}, mem[addr+256+1], mem[addr+256]};           //lhw
  3'b010: data_out = { mem[addr+256+3], mem[addr+256+2], mem[addr+256+1], mem[addr+256]};  //LW
  3'b100: data_out = {24'b0, mem[addr+256]}; //lbu
  3'b101: data_out = {16'b0, mem[addr+256+1], mem[addr+256]};  //lhu

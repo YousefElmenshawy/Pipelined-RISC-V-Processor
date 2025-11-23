@@ -74,7 +74,7 @@ wire [63:0] PC_and_Inst_In;
 Mux#(64) Control_ID_Mux ({32'b0,32'h000_00033},{PCOut,MemOut},ConfirmBranch|ID_EX_Jump, PC_and_Inst_In);
 
 wire [31:0] IF_ID_PC, IF_ID_Inst;
-Register #(64) IF_ID (clk,rst,~stall&~BreakSel&~fetchstall,PC_and_Inst_In
+Register #(64) IF_ID (clk,rst,~stall&~BreakSel,PC_and_Inst_In
 ,{IF_ID_PC,IF_ID_Inst} );
 
 
@@ -119,7 +119,7 @@ wire [7:0] ControlIn;
 wire [2:0] WDselIn;
 Mux#(3) WDsel_Mux(3'b0,WDsel,stall|ConfirmBranch|ID_EX_Jump,WDselIn);
 Mux#(8) EX_Control_Mux(8'b0,{RegWrite,1'b0,MemRead,MemWrite, Branch ,ALUOp,ALUSrc}, stall|ConfirmBranch|ID_EX_Jump, ControlIn);
-Register #(164) ID_EX (clk,rst,1'b1,{ControlIn,IF_ID_PC,
+Register #(163) ID_EX (clk,rst,1'b1,{ControlIn,IF_ID_PC,
 ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, BreakSel, WDselIn, IF_ID_Inst[5],PCsel, Jump},
 
 {ID_EX_Ctrl,ID_EX_PC,ID_EX_RegR1,ID_EX_RegR2,
