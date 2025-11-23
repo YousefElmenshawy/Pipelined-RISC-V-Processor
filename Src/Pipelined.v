@@ -69,9 +69,7 @@ Register #(32) PC (clk,rst,~stall&~BreakSel&~fetchstall, PCIn,PCOut);
 wire [63:0] PC_and_Inst_In;
 
 
-
-
-Mux#(64) Control_ID_Mux ({32'b0,32'h000_00033},{PCOut,MemOut},ConfirmBranch|ID_EX_Jump, PC_and_Inst_In);
+Mux#(64) Control_ID_Mux ({32'b0,32'h000_00033},{PCOut,MemOut},ConfirmBranch|ID_EX_Jump| fetchstall, PC_and_Inst_In);
 
 wire [31:0] IF_ID_PC, IF_ID_Inst;
 Register #(64) IF_ID (clk,rst,~stall&~BreakSel,PC_and_Inst_In
