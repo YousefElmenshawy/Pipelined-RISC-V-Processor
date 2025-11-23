@@ -38,125 +38,67 @@ reg [31:0] data_out;
  
 initial begin
 //Data
+
+/*
 mem[256]=8'd17;
 mem[260]=8'd9;
 mem[264]=8'd25;
 
-// Instructions
-mem[0]=8'h93; // addi x1, x0, 1  0x00100093
-mem[1] = 8'h00;
-mem[2] = 8'h10;
-mem[3] = 8'h00;
+*/
+mem[0] = 8'b00010011; // addi x2, x0, 2 [byte 1]
+mem[1] = 8'b00000001; //  [byte 2]
+mem[2] = 8'b00100000; //  [byte 3]
+mem[3] = 8'b00000000; //  [byte 4]
+mem[4] = 8'b10010011; // addi x3, x0, 3 [byte 1]
+mem[5] = 8'b00000001; //  [byte 2]
+mem[6] = 8'b00110000; //  [byte 3]
+mem[7] = 8'b00000000; //  [byte 4]
+mem[8] = 8'b10110011; // add x1, x2, x3 [byte 1]
+mem[9] = 8'b00000000; //  [byte 2]
+mem[10] = 8'b00110001; //  [byte 3]
+mem[11] = 8'b00000000; //  [byte 4]
+mem[12] = 8'b10110011; // sub x1, x2, x3 [byte 1]
+mem[13] = 8'b00000000; //  [byte 2]
+mem[14] = 8'b00110001; //  [byte 3]
+mem[15] = 8'b01000000; //  [byte 4]
+mem[16] = 8'b10110011; // sll x1, x2, x3 [byte 1]
+mem[17] = 8'b00010000; //  [byte 2]
+mem[18] = 8'b00110001; //  [byte 3]
+mem[19] = 8'b00000000; //  [byte 4]
+mem[20] = 8'b10110011; // slt x1, x2, x3 [byte 1]
+mem[21] = 8'b00100000; //  [byte 2]
+mem[22] = 8'b00110001; //  [byte 3]
+mem[23] = 8'b00000000; //  [byte 4]
+mem[24] = 8'b10110011; // sltu x1, x2, x3 [byte 1]
+mem[25] = 8'b00110000; //  [byte 2]
+mem[26] = 8'b00110001; //  [byte 3]
+mem[27] = 8'b00000000; //  [byte 4]
+mem[28] = 8'b10110011; // xor x1, x2, x3 [byte 1]
+mem[29] = 8'b01000000; //  [byte 2]
+mem[30] = 8'b00110001; //  [byte 3]
+mem[31] = 8'b00000000; //  [byte 4]
+mem[32] = 8'b10110011; // srl x1, x2, x3 [byte 1]
+mem[33] = 8'b01010000; //  [byte 2]
+mem[34] = 8'b00110001; //  [byte 3]
+mem[35] = 8'b00000000; //  [byte 4]
+mem[36] = 8'b10110011; // sra x1, x2, x3 [byte 1]
+mem[37] = 8'b01010000; //  [byte 2]
+mem[38] = 8'b00110001; //  [byte 3]
+mem[39] = 8'b01000000; //  [byte 4]
+mem[40] = 8'b10110011; // or x1, x2, x3 [byte 1]
+mem[41] = 8'b01100000; //  [byte 2]
+mem[42] = 8'b00110001; //  [byte 3]
+mem[43] = 8'b00000000; //  [byte 4]
+mem[44] = 8'b10110011; // and x1, x2, x3 [byte 1]
+mem[45] = 8'b01110000; //  [byte 2]
+mem[46] = 8'b00110001; //  [byte 3]
+mem[47] = 8'b00000000; //  [byte 4]
+mem[48] = 8'b00001111; // FENCE.TSO [byte 1]
+mem[49] = 8'b00000000; //  [byte 2]
+mem[50] = 8'b00110000; //  [byte 3]
+mem[51] = 8'b10000011; //  [byte 4]
 
 
-
-// addi x6, x0, 0   ; sum = 0 0x00000313
-
-
-mem[4]=8'h13; 
-mem[5] = 8'h03;
-mem[6] = 8'h00;
-mem[7] = 8'h00;
-
-
-
-
- // addi x2, x0, 5   ; limit = 5  0x00500113
-
-mem[8]=8'h13; 
-mem[9] = 8'h01;
-mem[10] = 8'h50;
-mem[11] = 8'h00;
-
-
-
-
-// loop: sum += i
- // add x6, x6, x1   ; sum = sum + i
-
-//0x00130333
-
-mem[12]=8'h33; 
-mem[13] = 8'h03;
-mem[14] = 8'h13;
-mem[15] = 8'h00;
-
-
-
-
- // addi x1, x1, 1   ; i = i + 1
-//0x00108093
-
-mem[16]=8'h93; 
-mem[17] = 8'h80;
-mem[18] = 8'h10;
-mem[19] = 8'h00;
-
-
-// check if i <= 5 ? continue loop
- // sub x7, x1, x2   ; x7 = i - 5
-//0x402083b3
-
-mem[20]=8'hb3; 
-mem[21] = 8'h83;
-mem[22] = 8'h20;
-mem[23] = 8'h40;
-
-
-
- // bge x0, x7, -12  ; if i < 5, branch back (to mem[3])
-//0xfe705ae3
-
-mem[24]=8'he3; 
-mem[25] = 8'h5a;
-mem[26] = 8'h70;
-mem[27] = 8'hfe;
-
-// end (loop done)
-
-
- // sw x6, 12(x0)    ; store sum (optional)
-//0x00602623
-mem[28]=8'h23; 
-mem[29] = 8'h26;
-mem[30] = 8'h60;
-mem[31] = 8'h00;
-
-
- // lw x6, 12(x0)     ; reload sum
-//0x00c02303
-
-
-mem[32]=8'h03; 
-mem[33] = 8'h23;
-mem[34] = 8'hc0;
-mem[35] = 8'h00;
-
-
-//0x01400193   addi x3, x0,20
-
-mem[36]=8'h93; 
-mem[37] = 8'h01;
-mem[38] = 8'h40;
-mem[39] = 8'h01;
-
-
-
-//addi x4, x0, 29   
-
-//0x01d00213
-
-mem[40]=8'h13; 
-mem[41] = 8'h02;
-mem[42] = 8'hd0;
-mem[43] = 8'h01;
-
- //ecall to exit
-
-mem[44]=8'h73; 
-mem[45] = 8'h00;
-mem[46] = 8'h00;
-mem[47] = 8'h00;
 
 end
 always@ (posedge clk) begin
