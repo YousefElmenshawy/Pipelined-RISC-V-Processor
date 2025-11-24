@@ -70,7 +70,7 @@ assign PCen =  (PCIn>`PC_Limit)?(1'b0):(1'b1);
 
 //  START OF     IF         /////////////////////////////////////
 
-Register #(32) PC (clk,rst,~stall&~BreakSel&~fetchstall&PCen, PCIn,PCOut);
+Register #(32) PC (clk,rst,~stall&~BreakSelIn&~fetchstall&PCen, PCIn,PCOut);
 
 
 wire [63:0] PC_and_Inst_In;
@@ -79,7 +79,7 @@ wire [63:0] PC_and_Inst_In;
 Mux#(64) Control_ID_Mux ({32'b0,32'h000_00033},{PCOut,MemOut},ConfirmBranch|ID_EX_Jump| fetchstall, PC_and_Inst_In);
 
 wire [31:0] IF_ID_PC, IF_ID_Inst;
-Register #(64) IF_ID (clk,rst,~stall&~BreakSel,PC_and_Inst_In
+Register #(64) IF_ID (clk,rst,~stall&~BreakSelIn,PC_and_Inst_In
 ,{IF_ID_PC,IF_ID_Inst} );
 
 
@@ -104,7 +104,6 @@ assign PartialOpcode = IF_ID_Inst[6:0];
 wire [31:0] ID_EX_PC, ID_EX_RegR1, ID_EX_RegR2, ID_EX_Imm;
 wire [7:0] ID_EX_Ctrl;
 wire [1:0] ID_EX_PC_sel;
-wire ID_EX_BSel;
 wire ID_EX_Jump;
 
 wire ID_EX_ShiftCheck;
@@ -122,13 +121,15 @@ ImmGen  Gen(IF_ID_Inst, gen_out);
 ControlUnit control (PartialOpcode,  Branch, MemRead, WDsel, MemWrite, ALUSrc, RegWrite, ALUOp, PCsel,Jump, BreakSel);
 wire [7:0] ControlIn;
 wire [2:0] WDselIn;
+wire BreakSelIn;
 Mux#(3) WDsel_Mux(3'b0,WDsel,stall|ConfirmBranch|ID_EX_Jump,WDselIn);
+Mux#(1) BreakSelMux (1'b0, BreakSel,ConfirmBranch|ID_EX_Jump,BreakSelIn);
 Mux#(8) EX_Control_Mux(8'b0,{RegWrite,1'b0,MemRead,MemWrite, Branch ,ALUOp,ALUSrc}, stall|ConfirmBranch|ID_EX_Jump, ControlIn);
-Register #(163) ID_EX (clk,rst,1'b1,{ControlIn,IF_ID_PC,
-ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, BreakSel, WDselIn, IF_ID_Inst[5],PCsel, Jump},
+Register #(162) ID_EX (clk,rst,1'b1,{ControlIn,IF_ID_PC,
+ReadData1,ReadData2,gen_out,func7,func3,ReadAddress1, ReadAddress2,WriteAddress, WDselIn, IF_ID_Inst[5],PCsel, Jump},
 
 {ID_EX_Ctrl,ID_EX_PC,ID_EX_RegR1,ID_EX_RegR2,
-ID_EX_Imm, ID_EX_Func,ID_EX_Rs1,ID_EX_Rs2,ID_EX_Rd, ID_EX_BSel, ID_EX_WDSel, ID_EX_ShiftCheck,ID_EX_PC_sel, ID_EX_Jump} );
+ID_EX_Imm, ID_EX_Func,ID_EX_Rs1,ID_EX_Rs2,ID_EX_Rd, ID_EX_WDSel, ID_EX_ShiftCheck,ID_EX_PC_sel, ID_EX_Jump} );
 
 // Rs1 and Rs2 are needed later for the forwarding unit
 
@@ -141,6 +142,7 @@ wire [4:0] EX_MEM_Rd;
 wire EX_MEM_Zero;
 wire[2:0] EX_MEM_WDSel;
 wire [31:0] EX_MEM_PC;
+
 
 assign shamt = ID_EX_ShiftCheck? ID_EX_RegR2[4:0]: ID_EX_Imm[4:0]; //deciding on I-R types for shifting
 

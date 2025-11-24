@@ -3,9 +3,9 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 11/03/2025 03:42:08 PM
+// Create Date: 11/21/2025 03:59:02 PM
 // Design Name: 
-// Module Name: TC_01
+// Module Name: program_tb
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -20,9 +20,9 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module Program_tb();
+module program_tb();
 reg clk, rst;
-SingleCycle DUT (clk,rst);
+Pipelined DUT (clk,rst);
 initial begin
 clk =0 ;
 forever#(5) clk = ~clk;
@@ -34,4 +34,5 @@ rst = 1;
 rst =0;
 
 end
+
 endmodule
