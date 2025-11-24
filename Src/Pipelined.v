@@ -140,7 +140,7 @@ wire [4:0] EX_MEM_Ctrl;
 wire [4:0] EX_MEM_Rd;
 wire EX_MEM_Zero;
 wire[2:0] EX_MEM_WDSel;
-
+wire [31:0] EX_MEM_PC;
 
 assign shamt = ID_EX_ShiftCheck? ID_EX_RegR2[4:0]: ID_EX_Imm[4:0]; //deciding on I-R types for shifting
 
@@ -187,10 +187,10 @@ wire [2:0] EX_MEM_Func3;
 wire [4:0] EX_MEM_ControlIn;
 wire [2:0]  WD_ControlIn;   
 
-Register #(209) EX_MEM (clk,rst,1'b1,
-{ID_EX_Ctrl[7:3],BranchAdderOut,zf,ALU_Result,ALUin,ID_EX_Rd, ID_EX_WDSel, NormalAdderOut, AUIPCadderOut, LUIData,ID_EX_Func[2:0]},
+Register #(241) EX_MEM (clk,rst,1'b1,
+{ID_EX_Ctrl[7:3],BranchAdderOut,zf,ALU_Result,ALUin,ID_EX_Rd, ID_EX_WDSel, NormalAdderOut, AUIPCadderOut, LUIData,ID_EX_Func[2:0],ID_EX_PC},
 {EX_MEM_Ctrl, EX_MEM_BranchAddOut, EX_MEM_Zero,
-EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_Rd,  EX_MEM_WDSel, EX_MEM_NormalAdderOut, EX_MEM_AUIPCadderOut, EX_MEM_LUIData,EX_MEM_Func3} );
+EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_Rd,  EX_MEM_WDSel, EX_MEM_NormalAdderOut, EX_MEM_AUIPCadderOut, EX_MEM_LUIData,EX_MEM_Func3,EX_MEM_PC} );
 
 
 
@@ -202,17 +202,17 @@ EX_MEM_ALU_out, EX_MEM_RegR2, EX_MEM_Rd,  EX_MEM_WDSel, EX_MEM_NormalAdderOut, E
 //  START OF     MEM        /////////////////////////////////////
 
 
-wire [31:0] MEM_WB_Mem_out, MEM_WB_ALU_out, MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUIData;
+wire [31:0] MEM_WB_Mem_out, MEM_WB_ALU_out, MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUIData,MEM_WB_PC;
 wire [1:0]  MEM_WB_Ctrl;
 wire [2:0]  MEM_WB_WDSel;
 
 wire [4:0] MEM_WB_Rd;
 Register #(170) MEM_WB (clk,rst,1'b1,
-{EX_MEM_Ctrl[4:3],MemOut,EX_MEM_ALU_out,EX_MEM_Rd, EX_MEM_WDSel, EX_MEM_NormalAdderOut,EX_MEM_AUIPCadderOut, EX_MEM_LUIData },
+{EX_MEM_Ctrl[4:3],MemOut,EX_MEM_ALU_out,EX_MEM_Rd, EX_MEM_WDSel, EX_MEM_PC,EX_MEM_AUIPCadderOut, EX_MEM_LUIData },
 
 {MEM_WB_Ctrl,MEM_WB_Mem_out, MEM_WB_ALU_out,
-MEM_WB_Rd, MEM_WB_WDSel,MEM_WB_NormalAdderOut, MEM_WB_AUIPCadderOut, MEM_WB_LUIData} );
-
+MEM_WB_Rd, MEM_WB_WDSel,MEM_WB_PC, MEM_WB_AUIPCadderOut, MEM_WB_LUIData} );
+ assign MEM_WB_NormalAdderOut = MEM_WB_PC + 4;
 
 
 
