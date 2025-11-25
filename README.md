@@ -23,7 +23,7 @@ This project demonstrates advanced computer architecture concepts including pipe
 ## Overview
 
 ### Key Highlights
-- **ISA**: RISC-V RV32I Base Integer Instruction Set (47 instructions)
+- **ISA**: RISC-V RV32I Base Integer Instruction Set (42 instructions)
 - **Pipeline**: Classic 5-stage design (IF, ID, EX, MEM, WB)
 - **Memory**: 512-byte unified byte-addressable memory (256B instructions, 256B data)
 - **Registers**: 32 general-purpose 32-bit registers (x0-x31)
@@ -205,7 +205,7 @@ The Hazard Unit detects memory conflicts and temporarily stalls instruction fetc
 
 ## Supported Instructions
 
-The processor implements the complete RV32I base instruction set (47 instructions):
+The processor implements the complete RV32I base instruction set (42 instructions):
 
 | Format | Category | Instructions |
 |--------|----------|--------------|
@@ -483,20 +483,6 @@ cd Pipelined-RISC-V-Processor
   - `ForwardA`, `ForwardB`: Forwarding control signals
   - `RF.RegFile`: Register file contents
 
-### Pre-Generated Test Programs
-
-| Test File | Description | Key Features Tested |
-|-----------|-------------|---------------------|
-| `Mem_Fib.txt` | Fibonacci sequence (14th number) | Loops, branches, ALU operations, forwarding |
-| `Mem_Sum1to5.txt` | Sum of 1 to 5 | Accumulation, memory access |
-| `Mem-R.txt` | All R-type instructions | ADD, SUB, AND, OR, XOR, shifts |
-| `Mem-I.txt` | I-type and load instructions | ADDI, loads, load-use stalls |
-| `Mem-S.txt` | Store instructions | SB, SH, SW with offsets |
-| `Mem-B.txt` | Branch instructions | All 6 branch conditions |
-| `Mem-J.txt` | Jump instructions | JAL, JALR with return address |
-| `Mem-U.txt` | Upper immediate | LUI, AUIPC |
-| `Mem-M.txt` | Mixed instruction set | Random mix of all types |
-| `Mem_SYS.txt` | System instructions | ECALL, EBREAK, FENCE |
 
 ### Generating Custom Tests
 
@@ -584,7 +570,7 @@ The processor has been extensively verified with comprehensive test programs cov
 ### Test Coverage
 
 #### ✅ Instruction Type Coverage
-All 47 RV32I instructions tested including:
+All 42 RV32I instructions tested including:
 - **R-type**: Arithmetic (ADD, SUB, SLT, SLTU), Logic (AND, OR, XOR), Shifts (SLL, SRL, SRA)
 - **I-type**: Arithmetic, Logic, Shifts, Loads (LB, LH, LW, LBU, LHU), JALR
 - **S-type**: Stores (SB, SH, SW)
@@ -645,61 +631,6 @@ All 47 RV32I instructions tested including:
 
 - **Yousef Elmenshawy**
 - **Kareem Rashed**
-
----
-
-*This project is developed for educational purposes to demonstrate advanced computer architecture concepts.*
-  - Branch taken flush (2-stage pipeline flush)
-  - Jump instruction flush
-  - PC update verification
-
-### Test Programs
-| Test File | Description | Tests Covered |
-|-----------|-------------|---------------|
-| `Mem_Fib.txt` | Fibonacci sequence (14th number) | Loops, branches (BNE), arithmetic (ADD, ADDI), load-use hazards, data forwarding |
-| `Mem_Sum1to5.txt` | Sum of 1 to 5 | Loops, accumulation, memory access |
-| `Mem-R.txt` | All R-type instructions | ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU with forwarding |
-| `Mem-I.txt` | I-type and load instructions | ADDI, ANDI, ORI, XORI, SLLI, SRLI, LB, LH, LW, LBU, LHU, load-use stalls |
-| `Mem-S.txt` | Store instructions | SB, SH, SW with different immediate offsets |
-| `Mem-B.txt` | All branch types | BEQ, BNE, BLT, BGE, BLTU, BGEU with control hazard flushing |
-| `Mem-J.txt` | Jump instructions | JAL, JALR with return address save |
-| `Mem-U.txt` | Upper immediate | LUI, AUIPC with large immediate values |
-| `Mem-M.txt` | Mixed instruction set | Random mix of all instruction types |
-| `Mem_SYS.txt` | System instructions | ECALL, EBREAK, FENCE, FENCE.TSO, PAUSE |
-
-### Verification Methodology
-1. **Manual Assembly Testing**: Hand-crafted test cases (Fibonacci, Sum) with known expected results
-2. **Automated Generation**: C++ generator produces comprehensive instruction coverage
-3. **Waveform Inspection**: Visual verification of pipeline behavior, hazard detection, and signal flow
-4. **Register File Monitoring**: Checking final register values against expected computation results
-5. **Memory Content Verification**: Validating store operations write correct data to memory
-6. **Hazard Signal Tracking**: Confirming `stall`, `fetchstall`, `ForwardA`, `ForwardB` activate correctly
-
-### Known Test Results
-- **Fibonacci Test**: Successfully computes fib(14) = 377 in register x2
-- **R-type Test**: All 10 R-type operations execute correctly with proper forwarding
-- **Load-Use Test**: Correctly inserts 1-cycle stall and forwards data on subsequent cycle
-- **Branch Test**: All 6 branch conditions correctly evaluate and update PC
-- **Memory Test**: Byte, halfword, and word accesses with proper sign/zero extension
-
-## Future Enhancements
-
-- [ ] Branch prediction unit
-- [ ] Cache implementation (I-cache and D-cache)
-- [ ] Multi-ported memory
-- [ ] Extended instruction sets (M, A, F, D extensions)
-- [ ] Performance counters
-- [ ] Cache implementation
-- [ ] Extended instruction set support (M, A, F, D extensions)
-
-## License
-
-This project is developed for educational purposes.
-
-## Contributors
-
-- *Yousef Elmenshawy*
-- *Kareem Rashed*
 
 ---
 
